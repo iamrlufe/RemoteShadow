@@ -1,0 +1,152 @@
+<Window x:Class="RemoteShadow.App.Shell.Login.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RemoteShadow — вход"
+        Width="520"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        ShowInTaskbar="True"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+    <StackPanel Margin="28,24,28,24">
+
+      <!-- Заголовок -->
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="&#xE7F4;"
+                   Style="{StaticResource IconTextStyle}"
+                   FontSize="30"
+                   Margin="0,0,14,0"
+                   Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="RemoteShadow" Style="{StaticResource DialogTitleStyle}" />
+          <TextBlock Text="Вход в домен" Style="{StaticResource MutedTextStyle}" />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Подсказка демо-режима -->
+      <Border Margin="0,16,0,0"
+              Padding="12,8"
+              CornerRadius="6"
+              Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
+              Visibility="{Binding IsDemo, Converter={StaticResource BoolToVisibilityConverter}}">
+        <TextBlock Text="{Binding DemoHint}" TextWrapping="Wrap" />
+      </Border>
+
+      <!-- Форма: блокируется на время входа -->
+      <StackPanel Margin="0,20,0,0" IsEnabled="{Binding IsNotBusy}">
+
+        <RadioButton x:Name="CurrentUserRadio"
+                     GroupName="LogonMode"
+                     IsChecked="{Binding IsCurrentUserMode, Mode=TwoWay}"
+                     IsEnabled="{Binding CanUseCurrentUser}">
+          <StackPanel>
+            <TextBlock Text="Текущий пользователь Windows" />
+            <TextBlock Text="{Binding CurrentUserLabel}" Style="{StaticResource CaptionMutedTextStyle}" />
+          </StackPanel>
+        </RadioButton>
+        <RadioButton x:Name="ExplicitRadio"
+                     GroupName="LogonMode"
+                     Margin="0,4,0,0"
+                     Content="Другая учётная запись"
+                     IsChecked="{Binding IsExplicitMode, Mode=TwoWay}" />
+        <TextBlock Margin="0,4,0,0"
+                   Style="{StaticResource CaptionMutedTextStyle}"
+                   Text="Компьютер не входит в домен: вход возможен только по логину и паролю."
+                   Visibility="{Binding CanUseCurrentUser, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}" />
+
+        <TextBlock Text="Домен" Margin="0,18,0,4" />
+        <TextBox x:Name="DomainBox"
+                 Text="{Binding Domain, UpdateSourceTrigger=PropertyChanged}"
+                 AutomationProperties.Name="Домен" />
+
+        <TextBlock Text="Контроллер домена (необязательно)" Margin="0,12,0,4" />
+        <Grid>
+          <TextBox x:Name="ControllerBox"
+                   Text="{Binding DomainController, UpdateSourceTrigger=PropertyChanged}"
+                   AutomationProperties.Name="Контроллер домена" />
+          <TextBlock Text="найти автоматически"
+                     Margin="11,0,0,0"
+                     VerticalAlignment="Center"
+                     IsHitTestVisible="False"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                     Visibility="{Binding Text, ElementName=ControllerBox, Converter={StaticResource EmptyToVisibilityConverter}}" />
+        </Grid>
+
+        <!-- Только для «Другая учётная запись» -->
+        <StackPanel Visibility="{Binding IsExplicitMode, Converter={StaticResource BoolToVisibilityConverter}}">
+          <TextBlock Text="Логин" Margin="0,12,0,4" />
+          <TextBox x:Name="UserNameBox"
+                   Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
+                   AutomationProperties.Name="Логин" />
+          <TextBlock Text="Пароль" Margin="0,12,0,4" />
+          <PasswordBox x:Name="PasswordField" AutomationProperties.Name="Пароль" />
+
+          <CheckBox Content="Запомнить логин"
+                    Margin="0,14,0,0"
+                    IsChecked="{Binding RememberLogin, Mode=TwoWay}" />
+          <CheckBox Content="Запомнить пароль"
+                    Margin="0,4,0,0"
+                    IsChecked="{Binding RememberPassword, Mode=TwoWay}"
+                    IsEnabled="{Binding CanRememberPassword}" />
+          <TextBlock Margin="28,0,0,0"
+                     Style="{StaticResource CaptionMutedTextStyle}"
+                     Text="Пароль будет сохранён в Диспетчере учётных данных Windows и зашифрован для вашей учётной записи Windows. Для привилегированных учётных записей пароль не сохраняется." />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Ошибка входа -->
+      <Border Margin="0,18,0,0"
+              Padding="12,10"
+              CornerRadius="6"
+              Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}"
+              AutomationProperties.LiveSetting="Assertive"
+              Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xEA39;"
+                       Style="{StaticResource IconTextStyle}"
+                       Margin="0,0,8,0"
+                       Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+            <TextBlock Text="{Binding ErrorTitle}" FontWeight="SemiBold" TextWrapping="Wrap" />
+          </StackPanel>
+          <TextBlock Text="{Binding ErrorMessage}"
+                     Margin="0,6,0,0"
+                     TextWrapping="Wrap"
+                     Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}" />
+          <TextBlock Text="{Binding ErrorHint}"
+                     Margin="0,6,0,0"
+                     Style="{StaticResource MutedTextStyle}"
+                     Visibility="{Binding HasErrorHint, Converter={StaticResource BoolToVisibilityConverter}}" />
+          <Button Content="Изменить контроллер домена"
+                  Margin="0,10,0,0"
+                  HorizontalAlignment="Left"
+                  Command="{Binding ChangeControllerCommand}"
+                  Visibility="{Binding CanChangeController, Converter={StaticResource BoolToVisibilityConverter}}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Индикатор -->
+      <ProgressBar IsIndeterminate="True"
+                   Height="3"
+                   Margin="0,18,0,0"
+                   AutomationProperties.Name="Идёт вход"
+                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+      <!-- Кнопки -->
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+        <Button x:Name="LoginButton"
+                Content="Войти"
+                Style="{StaticResource PrimaryButtonStyle}"
+                IsDefault="True"
+                Command="{Binding LoginCommand}" />
+        <Button Content="{Binding CloseButtonText}"
+                Margin="8,0,0,0"
+                MinWidth="96"
+                Command="{Binding CancelCommand}" />
+      </StackPanel>
+
+    </StackPanel>
+  </ScrollViewer>
+</Window>

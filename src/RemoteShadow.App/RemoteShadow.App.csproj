@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>RemoteShadow.App</RootNamespace>
+    <AssemblyName>RemoteShadow</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <SatelliteResourceLanguages>en;ru</SatelliteResourceLanguages>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RemoteShadow.Core\RemoteShadow.Core.csproj" />
+    <ProjectReference Include="..\RemoteShadow.Modules\RemoteShadow.Modules.csproj" />
+    <ProjectReference Include="..\RemoteShadow.Windows\RemoteShadow.Windows.csproj" />
+    <ProjectReference Include="..\RemoteShadow.Windows.Hosts\RemoteShadow.Windows.Hosts.csproj" />
+    <ProjectReference Include="..\RemoteShadow.Infrastructure\RemoteShadow.Infrastructure.csproj" />
+    <ProjectReference Include="..\RemoteShadow.Demo\RemoteShadow.Demo.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+</Project>
+

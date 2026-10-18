@@ -1,0 +1,80 @@
+<local:DialogWindowBase x:Class="RemoteShadow.App.Shell.Dialogs.ConfirmDialog"
+                        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                        xmlns:local="clr-namespace:RemoteShadow.App.Shell.Dialogs"
+                        Width="500"
+                        MaxHeight="720">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Focusable="False">
+      <StackPanel Margin="24,24,24,16">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="IconText"
+                     Style="{StaticResource IconTextStyle}"
+                     FontSize="28"
+                     VerticalAlignment="Top"
+                     Margin="0,0,16,0" />
+          <StackPanel Grid.Column="1">
+            <TextBlock x:Name="HeadingText" Style="{StaticResource DialogTitleStyle}" />
+            <TextBlock x:Name="MessageText" Margin="0,8,0,0" TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+
+        <!-- Перечень целей -->
+        <StackPanel x:Name="TargetsPanel" Margin="0,16,0,0">
+          <TextBlock x:Name="TargetsLabel" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4" />
+          <Border Style="{StaticResource CardStyle}" Padding="0">
+            <ScrollViewer MaxHeight="170" VerticalScrollBarVisibility="Auto" Focusable="False">
+              <ItemsControl x:Name="TargetsList" IsTabStop="False">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding}" Margin="12,5" TextTrimming="CharacterEllipsis" ToolTip="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+        </StackPanel>
+
+        <!-- Причина (только для ConfirmWithReason) -->
+        <StackPanel x:Name="ReasonPanel" Margin="0,16,0,0" Visibility="Collapsed">
+          <TextBlock Text="Причина" Margin="0,0,0,4" />
+          <TextBox x:Name="ReasonBox"
+                   TextWrapping="Wrap"
+                   MinHeight="64"
+                   MaxLength="500"
+                   VerticalScrollBarVisibility="Auto"
+                   AutomationProperties.Name="Причина"
+                   TextChanged="OnReasonChanged" />
+          <TextBlock x:Name="ReasonHint"
+                     Margin="0,4,0,0"
+                     Style="{StaticResource CaptionMutedTextStyle}"
+                     Text="Причина обязательна и попадёт в журнал. Минимум 3 символа." />
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+
+    <StackPanel Grid.Row="1"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Margin="24,0,24,20">
+      <Button x:Name="ConfirmButton"
+              Style="{StaticResource PrimaryButtonStyle}"
+              IsDefault="True"
+              Click="OnConfirmClick" />
+      <Button x:Name="CancelButton"
+              Content="Отмена"
+              Margin="8,0,0,0"
+              MinWidth="96"
+              IsCancel="True" />
+    </StackPanel>
+  </Grid>
+</local:DialogWindowBase>

@@ -1,0 +1,28 @@
+<Window x:Class="RemoteShadow.App.Shell.ConnectingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RemoteShadow"
+        Width="420"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        ShowInTaskbar="True"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+  <StackPanel Margin="24">
+    <TextBlock Text="Подключение к домену…" Style="{StaticResource DialogTitleStyle}" />
+    <TextBlock x:Name="DetailText"
+               Margin="0,8,0,0"
+               Style="{StaticResource MutedTextStyle}" />
+    <ProgressBar IsIndeterminate="True"
+                 Margin="0,16,0,0"
+                 Height="4"
+                 AutomationProperties.Name="Идёт подключение" />
+    <Button x:Name="SkipButton"
+            Content="Войти другой учётной записью"
+            IsCancel="True"
+            HorizontalAlignment="Right"
+            Margin="0,20,0,0"
+            Click="OnSkipClick" />
+  </StackPanel>
+</Window>

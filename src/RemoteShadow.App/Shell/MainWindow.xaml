@@ -1,0 +1,378 @@
+<Window x:Class="RemoteShadow.App.Shell.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:RemoteShadow.App.Shell"
+        xmlns:search="clr-namespace:RemoteShadow.App.Shell.Search"
+        Title="{Binding Title}"
+        Width="1280"
+        Height="800"
+        MinWidth="960"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+        Loaded="OnLoaded"
+        Closed="OnClosed"
+        Deactivated="OnWindowDeactivated"
+        LocationChanged="OnWindowMoved"
+        SizeChanged="OnWindowMoved"
+        PreviewMouseDown="OnWindowPreviewMouseDown">
+
+  <Window.Resources>
+
+    <!-- ===== Панель поиска Ctrl+K ===== -->
+
+    <DataTemplate x:Key="SearchHeaderTemplate" DataType="{x:Type search:SearchItem}">
+      <TextBlock Text="{Binding Title}"
+                 Style="{StaticResource GroupHeaderStyle}"
+                 Margin="2,6,0,2" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="SearchMessageTemplate" DataType="{x:Type search:SearchItem}">
+      <TextBlock Text="{Binding Title}"
+                 Style="{StaticResource MutedTextStyle}"
+                 Margin="2,2,0,4" />
+    </DataTemplate>
+
+    <DataTemplate x:Key="SearchResultTemplate" DataType="{x:Type search:SearchItem}">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Style="{StaticResource IconTextStyle}"
+                   Width="24"
+                   Text="{Binding Icon, Converter={StaticResource IconGlyphConverter}}"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding Subtitle}"
+                     Style="{StaticResource CaptionMutedTextStyle}"
+                     TextWrapping="NoWrap"
+                     TextTrimming="CharacterEllipsis"
+                     Visibility="{Binding HasSubtitle, Converter={StaticResource BoolToVisibilityConverter}}" />
+        </StackPanel>
+        <StackPanel Grid.Column="2"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding ShowsOnlineStatus, Converter={StaticResource BoolToVisibilityConverter}}">
+          <Ellipse Style="{StaticResource StatusDotStyle}"
+                   Margin="0,0,6,0"
+                   Tag="{Binding Online, Converter={StaticResource OnlineStatusConverter}}" />
+          <TextBlock Text="{Binding OnlineText}" Style="{StaticResource CaptionMutedTextStyle}" TextWrapping="NoWrap" />
+        </StackPanel>
+      </Grid>
+    </DataTemplate>
+
+    <search:SearchItemTemplateSelector x:Key="SearchTemplateSelector"
+                                       HeaderTemplate="{StaticResource SearchHeaderTemplate}"
+                                       MessageTemplate="{StaticResource SearchMessageTemplate}"
+                                       ResultTemplate="{StaticResource SearchResultTemplate}" />
+
+    <!-- Строки панели не берут фокус: поле поиска остаётся в фокусе, пока выбирают мышью. Заголовки не нажимаются. -->
+    <Style x:Key="SearchItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource ListItemStyle}">
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="IsHitTestVisible" Value="{Binding IsSelectable}" />
+      <Setter Property="Padding" Value="8,6" />
+      <EventSetter Event="PreviewMouseLeftButtonUp" Handler="OnSearchItemClick" />
+      <EventSetter Event="MouseEnter" Handler="OnSearchItemMouseEnter" />
+    </Style>
+
+    <!-- ===== Уведомления ===== -->
+
+    <DataTemplate x:Key="ToastTemplate" DataType="{x:Type shell:ToastItem}">
+      <Border Margin="0,8,0,0"
+              Padding="12,10"
+              CornerRadius="6"
+              BorderThickness="1"
+              Cursor="Hand"
+              Background="{DynamicResource ControlSolidFillColorDefaultBrush}"
+              BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+              ToolTip="Нажмите, чтобы закрыть"
+              AutomationProperties.Name="{Binding Message}"
+              AutomationProperties.LiveSetting="Polite"
+              MouseLeftButtonUp="OnToastClick">
+        <Border.Effect>
+          <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.25" />
+        </Border.Effect>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="ToastIcon"
+                     Style="{StaticResource IconTextStyle}"
+                     VerticalAlignment="Top"
+                     Margin="0,1,0,0"
+                     Text="{Binding Glyph}"
+                     Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+          <TextBlock Grid.Column="1"
+                     Margin="10,0,0,0"
+                     Text="{Binding Message}"
+                     TextWrapping="Wrap" />
+        </Grid>
+      </Border>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Kind}" Value="Success">
+          <Setter TargetName="ToastIcon" Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Kind}" Value="Error">
+          <Setter TargetName="ToastIcon" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <Style x:Key="StatusIndexTextStyle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IndexIsError}" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+  </Window.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- ===== Верхняя строка ===== -->
+    <Border Grid.Row="0"
+            Padding="16,8"
+            Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,0,0,1">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="&#xE7B3;"
+                     Style="{StaticResource IconTextStyle}"
+                     FontSize="20"
+                     Margin="0,0,10,0"
+                     Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+          <TextBlock Text="RemoteShadow"
+                     FontSize="16"
+                     FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+          <Border Style="{StaticResource BadgeInfoStyle}"
+                  Margin="10,0,0,0"
+                  Visibility="{Binding IsDemo, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="демо" />
+          </Border>
+        </StackPanel>
+
+        <!-- Поиск -->
+        <Grid x:Name="SearchHost"
+              Grid.Column="1"
+              MaxWidth="560"
+              Margin="24,0">
+          <TextBox x:Name="SearchBox"
+                   MinHeight="34"
+                   Padding="34,5,76,5"
+                   VerticalContentAlignment="Center"
+                   Text="{Binding Search.Text, UpdateSourceTrigger=PropertyChanged}"
+                   AutomationProperties.Name="Поиск: компьютер, пользователь, фамилия"
+                   AutomationProperties.AcceleratorKey="Ctrl+K"
+                   GotKeyboardFocus="OnSearchGotFocus"
+                   LostKeyboardFocus="OnSearchLostFocus"
+                   PreviewKeyDown="OnSearchKeyDown" />
+          <TextBlock Text="&#xE721;"
+                     Style="{StaticResource IconTextStyle}"
+                     FontSize="14"
+                     HorizontalAlignment="Left"
+                     Margin="12,0,0,0"
+                     IsHitTestVisible="False"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+          <TextBlock Text="Компьютер, пользователь, фамилия"
+                     Margin="34,0,76,0"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis"
+                     IsHitTestVisible="False"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                     Visibility="{Binding Text, ElementName=SearchBox, Converter={StaticResource EmptyToVisibilityConverter}}" />
+          <Border Style="{StaticResource BadgeStyle}"
+                  HorizontalAlignment="Right"
+                  Margin="0,0,10,0"
+                  IsHitTestVisible="False"
+                  Visibility="{Binding Text, ElementName=SearchBox, Converter={StaticResource EmptyToVisibilityConverter}}">
+            <TextBlock Text="Ctrl+K" />
+          </Border>
+
+          <Popup x:Name="SearchPopup"
+                 PlacementTarget="{Binding ElementName=SearchHost}"
+                 Placement="Bottom"
+                 StaysOpen="True"
+                 AllowsTransparency="True"
+                 PopupAnimation="Fade"
+                 IsOpen="{Binding Search.IsOpen, Mode=OneWay}">
+            <Border x:Name="SearchPopupRoot"
+                    Width="{Binding ActualWidth, ElementName=SearchHost}"
+                    Margin="0,4,14,14"
+                    Padding="6"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    Background="{DynamicResource ControlSolidFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+              <Border.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.3" />
+              </Border.Effect>
+              <ListBox x:Name="SearchList"
+                       MaxHeight="440"
+                       BorderThickness="0"
+                       Background="Transparent"
+                       Focusable="False"
+                       IsTabStop="False"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       AutomationProperties.Name="Результаты поиска"
+                       ItemsSource="{Binding Search.Items}"
+                       SelectedItem="{Binding Search.SelectedItem, Mode=TwoWay}"
+                       ItemTemplateSelector="{StaticResource SearchTemplateSelector}"
+                       ItemContainerStyle="{StaticResource SearchItemStyle}"
+                       SelectionChanged="OnSearchSelectionChanged" />
+            </Border>
+          </Popup>
+        </Grid>
+
+        <!-- Учётная запись -->
+        <Button x:Name="AccountButton"
+                Grid.Column="2"
+                Style="{StaticResource FlatActionButtonStyle}"
+                Margin="0"
+                MinWidth="120"
+                ToolTip="Учётная запись"
+                AutomationProperties.Name="Учётная запись"
+                AutomationProperties.HelpText="Сменить учётную запись или выйти"
+                Click="OnAccountClick">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE77B;"
+                       Style="{StaticResource IconTextStyle}"
+                       FontSize="14"
+                       Margin="0,0,8,0" />
+            <TextBlock Text="{Binding AccountLabel}" VerticalAlignment="Center" />
+            <TextBlock Text="&#xE70D;"
+                       Style="{StaticResource IconTextStyle}"
+                       FontSize="10"
+                       Margin="8,0,0,0" />
+          </StackPanel>
+          <Button.ContextMenu>
+            <ContextMenu x:Name="AccountMenu" Opened="OnAccountMenuOpened">
+              <MenuItem x:Name="ChangeAccountItem"
+                        Header="Сменить учётную запись…"
+                        Click="OnChangeAccountClick" />
+              <MenuItem x:Name="SignOutItem"
+                        Header="Выйти"
+                        Click="OnSignOutClick" />
+            </ContextMenu>
+          </Button.ContextMenu>
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- ===== Навигация и содержимое ===== -->
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="220" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <Border Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}">
+        <ListBox x:Name="NavList"
+                 Padding="8"
+                 BorderThickness="0"
+                 Background="Transparent"
+                 AutomationProperties.Name="Разделы"
+                 KeyboardNavigation.TabNavigation="Once"
+                 ItemsSource="{Binding NavItems}"
+                 SelectedItem="{Binding SelectedNavItem, Mode=TwoWay}"
+                 ItemContainerStyle="{StaticResource ListItemStyle}">
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="{x:Type shell:NavItem}">
+              <StackPanel Orientation="Horizontal" Margin="2,2">
+                <TextBlock Style="{StaticResource IconTextStyle}"
+                           Width="22"
+                           Text="{Binding Glyph}" />
+                <TextBlock Text="{Binding Title}"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+
+      <Border Grid.Column="1" Style="{StaticResource VerticalDividerStyle}" />
+
+      <Grid Grid.Column="2">
+        <ContentControl x:Name="PageHost"
+                        Content="{Binding CurrentView}"
+                        IsTabStop="False"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch" />
+
+        <StackPanel Style="{StaticResource EmptyStateStyle}"
+                    Visibility="{Binding HasCurrentView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}">
+          <TextBlock Text="&#xE7F4;"
+                     Style="{StaticResource IconTextStyle}"
+                     FontSize="40"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+          <TextBlock Text="Нет доступных разделов" Style="{StaticResource EmptyStateTitleStyle}" />
+          <TextBlock Text="Ни один модуль не добавил страницы в навигацию. Разделы появятся, когда модули будут подключены."
+                     Style="{StaticResource EmptyStateTextStyle}" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+
+    <!-- ===== Строка состояния ===== -->
+    <Border Grid.Row="2"
+            Padding="16,5"
+            Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
+            BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding StatusText}"
+                   ToolTip="{Binding StatusText}"
+                   FontSize="12"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        <TextBlock Grid.Column="1"
+                   Margin="16,0,0,0"
+                   MaxWidth="520"
+                   Text="{Binding IndexText}"
+                   ToolTip="{Binding IndexText}"
+                   Style="{StaticResource StatusIndexTextStyle}" />
+      </Grid>
+    </Border>
+
+    <!-- ===== Уведомления (поверх содержимого, над строкой состояния) ===== -->
+    <ItemsControl Grid.Row="0"
+                  Grid.RowSpan="3"
+                  Width="380"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Bottom"
+                  Margin="0,0,16,40"
+                  IsTabStop="False"
+                  Focusable="False"
+                  ItemsSource="{Binding Toasts}"
+                  ItemTemplate="{StaticResource ToastTemplate}" />
+  </Grid>
+</Window>
