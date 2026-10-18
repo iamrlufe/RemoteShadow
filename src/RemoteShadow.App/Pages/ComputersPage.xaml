@@ -1,0 +1,153 @@
+<UserControl x:Class="RemoteShadow.App.Pages.ComputersPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:RemoteShadow.Core.Models;assembly=RemoteShadow.Core"
+             xmlns:actions="clr-namespace:RemoteShadow.App.Shell.Actions">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="320" />
+      <ColumnDefinition Width="Auto" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- ===== Список компьютеров ===== -->
+    <DockPanel Grid.Column="0" Margin="16,16,8,16">
+      <TextBlock DockPanel.Dock="Top" Text="Компьютеры" Style="{StaticResource PageTitleStyle}" Margin="0,0,0,12" />
+      <TextBox DockPanel.Dock="Top"
+               Margin="0,0,0,8"
+               Padding="8,6"
+               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+               AutomationProperties.Name="Поиск компьютера" />
+      <ListBox ItemsSource="{Binding Computers}"
+               SelectedItem="{Binding SelectedComputer, Mode=TwoWay}"
+               BorderThickness="0"
+               Background="Transparent"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+               ItemContainerStyle="{StaticResource ListItemStyle}"
+               AutomationProperties.Name="Список компьютеров">
+        <ListBox.ItemTemplate>
+          <DataTemplate DataType="{x:Type models:ComputerInfo}">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Ellipse Style="{StaticResource StatusDotStyle}"
+                       Margin="0,0,10,0"
+                       Tag="{Binding IsOnline, Converter={StaticResource OnlineStatusConverter}}" />
+              <StackPanel Grid.Column="1">
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Style="{StaticResource CaptionMutedTextStyle}"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{Binding Description}"
+                           Visibility="{Binding Description, Converter={StaticResource NullToVisibilityConverter}}" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+
+    <Border Grid.Column="1" Style="{StaticResource VerticalDividerStyle}" />
+
+    <!-- ===== Карточка компьютера ===== -->
+    <Grid Grid.Column="2">
+      <ScrollViewer Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}"
+                    VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24" MaxWidth="760" HorizontalAlignment="Left">
+          <TextBlock Text="{Binding SelectedComputer.Name}" Style="{StaticResource PageTitleStyle}" />
+          <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0">
+            <Run Text="{Binding SelectedComputer.OperatingSystem, Mode=OneWay}" />
+            <Run Text=" · " />
+            <Run Text="{Binding SelectedComputer.HostName, Mode=OneWay}" />
+          </TextBlock>
+
+          <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+            <StackPanel>
+              <TextBlock Text="Подключение и питание" Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,8" />
+              <actions:ActionBar Actions="{Binding ComputerButtons}"
+                                 IsBusy="{Binding ComputerPresenter.IsBusy}"
+                                 BusyText="{Binding ComputerPresenter.BusyText}" />
+            </StackPanel>
+          </Border>
+
+          <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+            <StackPanel>
+              <Grid Margin="0,0,0,8">
+                <TextBlock Text="Сессии" Style="{StaticResource SectionTitleStyle}" VerticalAlignment="Center" />
+                <CheckBox Content="Без запроса пользователю"
+                          HorizontalAlignment="Right"
+                          IsChecked="{Binding NoConsent}"
+                          ToolTip="Shadow без согласия пользователя — причина потребуется в диалоге подтверждения и попадёт в журнал." />
+              </Grid>
+
+              <TextBlock Text="Идёт загрузка сессий…"
+                         Style="{StaticResource MutedTextStyle}"
+                         Visibility="{Binding SessionsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
+              <TextBlock Text="{Binding SessionsError}"
+                         Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                         Visibility="{Binding SessionsError, Converter={StaticResource NullToVisibilityConverter}}" />
+              <TextBlock Text="Сессий нет"
+                         Style="{StaticResource MutedTextStyle}"
+                         Visibility="{Binding Sessions.Count, Converter={StaticResource EmptyToVisibilityConverter}}" />
+
+              <ListBox ItemsSource="{Binding Sessions}"
+                       SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
+                       BorderThickness="0"
+                       Background="Transparent"
+                       MaxHeight="220"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       ItemContainerStyle="{StaticResource ListItemStyle}"
+                       Visibility="{Binding Sessions.Count, Converter={StaticResource EmptyToVisibilityConverter}, ConverterParameter=invert}"
+                       AutomationProperties.Name="Список сессий">
+                <ListBox.ItemTemplate>
+                  <DataTemplate DataType="{x:Type models:SessionInfo}">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel>
+                        <TextBlock>
+                          <Run Text="{Binding AccountName, Mode=OneWay}" />
+                          <Run Text=" · сессия " />
+                          <Run Text="{Binding Id, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource CaptionMutedTextStyle}"
+                                   Text="{Binding State, Converter={StaticResource SessionStateTextConverter}}" />
+                      </StackPanel>
+                      <Border Grid.Column="1"
+                              Style="{StaticResource BadgeStyle}"
+                              VerticalAlignment="Center"
+                              Visibility="{Binding ClientName, Converter={StaticResource NullToVisibilityConverter}}">
+                        <TextBlock Text="{Binding ClientName}" />
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <TextBlock Text="Выберите сессию, чтобы увидеть доступные действия"
+                         Style="{StaticResource CaptionMutedTextStyle}"
+                         Margin="0,8,0,8"
+                         Visibility="{Binding SelectedSession, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}" />
+              <actions:ActionBar Actions="{Binding SessionButtons}"
+                                 IsBusy="{Binding SessionPresenter.IsBusy}"
+                                 BusyText="{Binding SessionPresenter.BusyText}"
+                                 Visibility="{Binding SelectedSession, Converter={StaticResource NullToVisibilityConverter}}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <StackPanel Style="{StaticResource EmptyStateStyle}"
+                  Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}">
+        <TextBlock Text="&#xE977;" Style="{StaticResource IconTextStyle}" FontSize="40"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+        <TextBlock Text="Выберите компьютер" Style="{StaticResource EmptyStateTitleStyle}" />
+        <TextBlock Text="Слева — все компьютеры домена. Выберите компьютер, чтобы увидеть сессии и доступные действия."
+                   Style="{StaticResource EmptyStateTextStyle}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>
