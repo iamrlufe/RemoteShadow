@@ -223,7 +223,7 @@
                   <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                   <TextBlock Style="{StaticResource CaptionMutedTextStyle}"
                              TextWrapping="NoWrap"
-                             TextTrimming="CharacterEllipsis"><Run Text="{Binding IpAddresses[0], Mode=OneWay, FallbackValue='IP неизвестен', TargetNullValue='IP неизвестен'}" /><Run Text=" · RDP " /><Run Text="{Binding RdpAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /><Run Text=" · SMB " /><Run Text="{Binding SmbAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /><Run Text=" · SSH " /><Run Text="{Binding SshAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /></TextBlock>
+                             TextTrimming="CharacterEllipsis"><Run Text="{Binding IpAddresses[0], Mode=OneWay, FallbackValue='IP неизвестен', TargetNullValue='IP неизвестен'}" /><Run Text=" · Ping " /><Run Text="{Binding IcmpAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /><Run Text=" · RDP " /><Run Text="{Binding RdpAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /><Run Text=" · SMB " /><Run Text="{Binding SmbAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /><Run Text=" · SSH " /><Run Text="{Binding SshAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /></TextBlock>
                 </StackPanel>
               </Grid>
             </DataTemplate>
