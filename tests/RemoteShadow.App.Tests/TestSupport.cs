@@ -20,7 +20,20 @@ internal sealed class FakeComputerIndex : IComputerIndex
     public void Raise() => Changed?.Invoke(this, EventArgs.Empty);
 
     public Task InitializeAsync(CancellationToken ct) => Task.CompletedTask;
-    public Task RefreshAsync(bool full, CancellationToken ct) => Task.CompletedTask;
+    public int RefreshCount { get; private set; }
+
+    public bool? LastRefreshWasFull { get; private set; }
+
+    /// <summary>Что «пришло из AD» при следующем обновлении списка (для тестов кнопки «Обновить список»).</summary>
+    public Action<List<ComputerInfo>>? OnRefresh { get; set; }
+
+    public Task RefreshAsync(bool full, CancellationToken ct)
+    {
+        RefreshCount++;
+        LastRefreshWasFull = full;
+        OnRefresh?.Invoke(_computers);
+        return Task.CompletedTask;
+    }
 
     public IReadOnlyList<ComputerInfo> Search(string text, int max = 50) =>
         _computers

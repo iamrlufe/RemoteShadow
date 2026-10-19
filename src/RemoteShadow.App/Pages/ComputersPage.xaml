@@ -21,6 +21,22 @@
     <DockPanel Grid.Column="0" Margin="16,16,8,16">
       <TextBlock DockPanel.Dock="Top" Text="Компьютеры" Style="{StaticResource PageTitleStyle}" Margin="0,0,0,12" />
 
+      <!-- Главные действия всегда на виду: обновить список из AD, перепроверить доступность, избранное -->
+      <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+        <Button Content="Обновить список" Command="{Binding RefreshListCommand}" Margin="0,0,4,4"
+                ToolTip="Заново загрузить все компьютеры из AD (новые, переименованные, включённые или отключённые в каталоге). Доступность не проверяет."
+                AutomationProperties.Name="Обновить список" />
+        <Button Content="Обновить доступность" Command="{Binding RefreshVisibleAvailabilityCommand}" Margin="0,0,4,4"
+                ToolTip="Повторно проверить DNS, ping, RDP, SMB и SSH для компьютеров текущей области (поиск, группа, подразделение). Фильтры по доступности, протоколам и IP при выборе области не учитываются, поэтому ранее выключенный компьютер будет проверен снова."
+                AutomationProperties.Name="Обновить доступность" />
+        <CheckBox Content="★ Только избранные" IsChecked="{Binding OnlyFavorites}" VerticalAlignment="Center" Margin="4,0,8,4"
+                  AutomationProperties.Name="Только избранные" />
+        <Button Content="{Binding IsSelectedFavorite, Converter={StaticResource FavoriteButtonTextConverter}}"
+                Command="{Binding ToggleFavoriteCommand}" CommandParameter="{Binding SelectedComputer}" Margin="0,0,0,4"
+                Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}"
+                AutomationProperties.Name="Избранное" />
+      </WrapPanel>
+
       <!-- Активная группа сужает список, а список групп спрятан в свёрнутой панели: сброс всегда на виду -->
       <Grid DockPanel.Dock="Top" Margin="0,0,0,8"
             Visibility="{Binding HasSelectedGroup, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -96,11 +112,6 @@
               <Button Content="+ в группу" Command="{Binding AddSelectedComputerToGroupCommand}" CommandParameter="{Binding MembershipGroup}" Margin="0,0,4,0" />
               <Button Content="− из группы" Command="{Binding RemoveComputerFromGroupCommand}" CommandParameter="{Binding MembershipGroup}" />
             </StackPanel>
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Button Content="{Binding IsSelectedFavorite, Converter={StaticResource FavoriteButtonTextConverter}}"
-                    Command="{Binding ToggleFavoriteCommand}" CommandParameter="{Binding SelectedComputer}"
-                    AutomationProperties.Name="Избранное" />
           </StackPanel>
 
           <TextBlock Text="Подсети" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,2" />
@@ -201,8 +212,6 @@
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding SortByValues}" SelectedItem="{Binding SortBy}" AutomationProperties.Name="Сортировка" />
-        <Button Grid.Column="1" Content="Обновить доступность" Margin="4,0,0,0" Command="{Binding RefreshVisibleAvailabilityCommand}"
-                ToolTip="Проверяет ICMP/RDP/SMB/SSH только для видимого списка — никогда не всю сеть автоматически." />
       </Grid>
 
       <Expander DockPanel.Dock="Bottom" Header="Найдено сканированием (вне AD / требует проверки)" IsExpanded="False"
@@ -225,6 +234,8 @@
       </Expander>
 
       <TextBlock DockPanel.Dock="Top" Text="{Binding ListSummary}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4" />
+      <TextBlock DockPanel.Dock="Top" Text="{Binding ActiveFiltersSummary}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
+                 Visibility="{Binding ActiveFiltersSummary, Converter={StaticResource NullToVisibilityConverter}}" />
 
       <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyListHint}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
                  Visibility="{Binding EmptyListHint, Converter={StaticResource NullToVisibilityConverter}}" />

@@ -171,6 +171,13 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     [ObservableProperty]
     private string _newGroupName = string.Empty;
 
+    /// <summary>Показывать только избранные (временный фильтр, не сохраняется между запусками).</summary>
+    [ObservableProperty]
+    private bool _onlyFavorites;
+
+    [ObservableProperty]
+    private bool _isRefreshingList;
+
     // ----- подсети / сканирование -----------------------------------------------------------------------------------
 
     [ObservableProperty]
@@ -199,6 +206,9 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
     /// <summary>Порог, с которого сканирование требует подтверждения (слишком большой диапазон адресов).</summary>
     public const long LargeScanWarningThreshold = 1024;
+
+    /// <summary>Сколько компьютеров можно проверить по кнопке без подтверждения.</summary>
+    public const int LargeAvailabilityWarningThreshold = 1000;
 
     /// <summary>Сколько компьютеров помнит список «Недавние».</summary>
     public const int MaxRecentComputers = 15;
@@ -277,6 +287,8 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     partial void OnSelectedSessionChanged(SessionInfo? value) => RebuildSessionButtons();
 
     partial void OnNoConsentChanged(bool value) => RebuildSessionButtons();
+
+    partial void OnOnlyFavoritesChanged(bool value) => RefreshComputers();
 
     partial void OnSelectedGroupChanged(ComputerGroup? value)
     {
@@ -409,14 +421,72 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         if (!_disposed) RefreshComputers();
     });
 
-    private void RefreshComputers()
+    /// <summary>Компьютеры после поиска, группы и «только избранные» — до фильтров по доступности, протоколам и IP.</summary>
+    private IEnumerable<ComputerInfo> BaseSource()
     {
         var text = SearchText.Trim();
         IEnumerable<ComputerInfo> source = text.Length == 0 ? _index.All : _index.Search(text, 200);
 
         if (SelectedGroup is { } group) source = source.Where(c => group.ComputerIds.Contains(c.Id));
 
-        var filtered = ComputersFilter.ApplyAndSort(source, CurrentFilterState());
+        if (OnlyFavorites)
+        {
+            var favorites = _settingsStore.Load().FavoriteComputers.ToHashSet();
+            source = source.Where(c => favorites.Contains(c.Id));
+        }
+
+        return source;
+    }
+
+    /// <summary>
+    /// Область для «Обновить доступность»: всё, что пользователь выбрал поиском, группой, подразделением и т. п., но
+    /// БЕЗ фильтров по доступности, протоколам и IP. Эти фильтры сравнивают с результатом проверки, поэтому выключенный
+    /// ранее компьютер при фильтре «В сети» не входил бы в видимый список и никогда не перепроверялся.
+    /// </summary>
+    private List<ComputerInfo> AvailabilityScope()
+    {
+        var state = CurrentFilterState();
+        state.Availability = AvailabilityFilter.All;
+        state.RdpFilter = null;
+        state.SmbFilter = null;
+        state.SshFilter = null;
+        state.IpFilter = string.Empty;
+        return ComputersFilter.Apply(BaseSource(), state).ToList();
+    }
+
+    /// <summary>Какие условия сейчас сужают список (для строки «Действуют условия»); null — ничего не сужает.</summary>
+    public string? ActiveFiltersSummary
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(SearchText)) parts.Add($"поиск «{SearchText.Trim()}»");
+            if (SelectedGroup is { } group) parts.Add($"группа «{group.Name}»");
+            if (OnlyFavorites) parts.Add("только избранные");
+            if (AvailabilityFilter != AvailabilityFilter.All) parts.Add($"доступность: {AvailabilityText(AvailabilityFilter)}");
+            if (SourceFilter != ComputerSourceFilter.All) parts.Add($"источник: {(SourceFilter == ComputerSourceFilter.Ad ? "из AD" : "найденные сканированием")}");
+            var protocols = new[] { FilterRdp ? "RDP" : null, FilterSmb ? "SMB" : null, FilterSsh ? "SSH" : null }.Where(p => p is not null).ToList();
+            if (protocols.Count > 0) parts.Add("открыты " + string.Join(", ", protocols));
+            if (!string.IsNullOrWhiteSpace(NameFilter)) parts.Add($"имя «{NameFilter.Trim()}»");
+            if (!string.IsNullOrWhiteSpace(IpFilter)) parts.Add($"IP «{IpFilter.Trim()}»");
+            if (!string.IsNullOrWhiteSpace(OuFilter)) parts.Add($"подразделение «{OuFilter.Trim()}»");
+            if (!string.IsNullOrWhiteSpace(DescriptionFilter)) parts.Add($"описание «{DescriptionFilter.Trim()}»");
+            if (!ShowDisabledAd) parts.Add("компьютеры, отключённые в AD, скрыты");
+            return parts.Count == 0 ? null : "Действуют условия: " + string.Join("; ", parts) + ".";
+        }
+    }
+
+    private static string AvailabilityText(AvailabilityFilter filter) => filter switch
+    {
+        AvailabilityFilter.Online => "в сети",
+        AvailabilityFilter.Offline => "не в сети",
+        AvailabilityFilter.Unknown => "не проверялись",
+        _ => "все",
+    };
+
+    private void RefreshComputers()
+    {
+        var filtered = ComputersFilter.ApplyAndSort(BaseSource(), CurrentFilterState());
 
         var selectedId = SelectedComputer?.Id;
 
@@ -435,6 +505,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
         OnPropertyChanged(nameof(ListSummary));
         OnPropertyChanged(nameof(EmptyListHint));
+        OnPropertyChanged(nameof(ActiveFiltersSummary));
 
         var reselected = selectedId is { } id ? Computers.FirstOrDefault(c => c.Id == id) : null;
         if (!Equals(SelectedComputer, reselected)) SelectedComputer = reselected;
@@ -521,6 +592,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         _settingsStore.Save(settings);
         OnPropertyChanged(nameof(Computers)); // список не меняется составом, но биндинг «избранное» должен перечитаться
         OnPropertyChanged(nameof(IsSelectedFavorite));
+        if (OnlyFavorites) RefreshComputers();
     }
 
     // ----- группы -------------------------------------------------------------------------------------------------
@@ -768,16 +840,55 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
     // ----- доступность (ручное обновление, никогда не само по себе) -------------------------------------------------
 
+    /// <summary>«Обновить список»: повторная загрузка компьютеров из AD (полная), без проверки доступности.</summary>
+    [RelayCommand]
+    private async Task RefreshListAsync()
+    {
+        if (IsRefreshingList) return;
+
+        IsRefreshingList = true;
+        try
+        {
+            await _index.RefreshAsync(full: true, CancellationToken.None);
+            RefreshComputers();
+            if (_index.LastError is { } error) _notifications.Error($"Список обновлён с ошибкой: {error}");
+            else _notifications.Success($"Список обновлён: компьютеров в AD — {_index.All.Count}");
+        }
+        catch (OperationCanceledException)
+        {
+            // Закрытие программы или смена подключения — не ошибка.
+        }
+        catch (Exception ex)
+        {
+            _notifications.Error($"Не удалось обновить список: {ex.Message}");
+        }
+        finally
+        {
+            IsRefreshingList = false;
+        }
+    }
+
     [RelayCommand]
     private async Task RefreshVisibleAvailabilityAsync()
     {
+        var scope = AvailabilityScope();
+        if (scope.Count > LargeAvailabilityWarningThreshold)
+        {
+            var confirmed = await _dialogs.ConfirmAsync(new ConfirmRequest(
+                "Проверить много компьютеров",
+                $"Будет проверено {scope.Count} компьютеров (DNS, ping, RDP/SMB/SSH). Это создаст заметную сетевую нагрузку. Сузьте область поиском, группой или подразделением либо продолжите.",
+                new[] { $"{scope.Count} компьютеров" },
+                IsDangerous: true));
+            if (!confirmed) return;
+        }
+
         _availabilityCts?.Cancel();
         var cts = new CancellationTokenSource();
         _availabilityCts = cts;
 
         try
         {
-            await _availability.RefreshAsync(Computers.ToList(), force: true, cts.Token);
+            await _availability.RefreshAsync(scope, force: true, cts.Token);
             RefreshComputers(); // не ждём throttled Changed от индекса — результат должен быть виден сразу
         }
         catch (OperationCanceledException)
