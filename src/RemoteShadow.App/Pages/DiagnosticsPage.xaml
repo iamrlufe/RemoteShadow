@@ -3,6 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:RemoteShadow.Core.Models;assembly=RemoteShadow.Core"
              xmlns:pages="clr-namespace:RemoteShadow.App.Pages">
+  <UserControl.Resources>
+    <pages:EnumTextConverter x:Key="EnumTextConverter" />
+    <pages:DiagnosticStatusIconConverter x:Key="DiagnosticStatusIconConverter" />
+  </UserControl.Resources>
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="320" />
@@ -13,11 +17,18 @@
     <!-- ===== Выбор компьютера ===== -->
     <DockPanel Grid.Column="0" Margin="16,16,8,16">
       <TextBlock DockPanel.Dock="Top" Text="Диагностика" Style="{StaticResource PageTitleStyle}" Margin="0,0,0,12" />
-      <TextBox DockPanel.Dock="Top"
-               Margin="0,0,0,8"
-               Padding="8,6"
-               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-               AutomationProperties.Name="Поиск компьютера" />
+      <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+        <TextBox Padding="8,6"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                 AutomationProperties.Name="Поиск компьютера" />
+        <TextBlock Text="Имя, описание или ОС компьютера"
+                   Margin="11,0,8,0"
+                   VerticalAlignment="Center"
+                   IsHitTestVisible="False"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
+      </Grid>
       <ListBox ItemsSource="{Binding Computers}"
                SelectedItem="{Binding SelectedComputer, Mode=TwoWay}"
                BorderThickness="0"
@@ -41,63 +52,102 @@
                     VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="24" MaxWidth="760" HorizontalAlignment="Left">
           <Grid>
-            <StackPanel>
+            <StackPanel HorizontalAlignment="Left">
               <TextBlock Text="{Binding SelectedComputer.Name}" Style="{StaticResource PageTitleStyle}" />
               <TextBlock Text="Почему не работает shadow: политика, брандмауэр, служба, права"
                          Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
             </StackPanel>
-            <Button Content="Запустить диагностику"
-                    Style="{StaticResource PrimaryButtonStyle}"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Command="{Binding RunCommand}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+              <Button Style="{StaticResource FlatActionButtonStyle}"
+                      Margin="0,0,8,0"
+                      Command="{Binding CopyReportCommand}"
+                      ToolTip="Скопировать отчёт текстом (без паролей и секретов)"
+                      AutomationProperties.Name="Скопировать отчёт">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Style="{StaticResource IconTextStyle}" FontSize="14" Margin="0,0,6,0"
+                             Text="{Binding Source=copy, Converter={StaticResource IconGlyphConverter}}" />
+                  <TextBlock Text="Скопировать отчёт" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Content="Проверить"
+                      Style="{StaticResource PrimaryButtonStyle}"
+                      Command="{Binding RunCommand}"
+                      AutomationProperties.Name="Запустить диагностику" />
+            </StackPanel>
           </Grid>
 
-          <TextBlock Text="Идёт проверка…" Style="{StaticResource MutedTextStyle}" Margin="0,16,0,0"
-                     Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}" />
+          <StackPanel Margin="0,16,0,0"
+                      Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ProgressBar IsIndeterminate="True" Height="3" AutomationProperties.Name="Идёт проверка" />
+            <TextBlock Text="Идёт проверка…" Style="{StaticResource MutedTextStyle}" Margin="0,6,0,0" />
+          </StackPanel>
+
           <TextBlock Text="{Binding Error}"
                      Margin="0,16,0,0"
+                     TextWrapping="Wrap"
                      Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                      Visibility="{Binding Error, Converter={StaticResource NullToVisibilityConverter}}" />
 
-          <TextBlock Text="{Binding Report.Verdict}"
-                     Style="{StaticResource SectionTitleStyle}"
-                     Margin="0,16,0,8"
-                     Visibility="{Binding Report.Verdict, Converter={StaticResource NullToVisibilityConverter}}" />
+          <!-- Главный вывод -->
+          <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0"
+                  Visibility="{Binding VerdictText, Converter={StaticResource NullToVisibilityConverter}}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Style="{StaticResource IconTextStyle}" FontSize="28" Margin="0,0,14,0"
+                         Text="{Binding VerdictStatus, Converter={StaticResource DiagnosticStatusIconConverter}}"
+                         Foreground="{Binding VerdictStatus, Converter={StaticResource StatusToBrushConverter}}" />
+              <TextBlock Text="{Binding VerdictText}"
+                         FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="620"
+                         VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            </StackPanel>
+          </Border>
 
-          <ItemsControl ItemsSource="{Binding Items}" Margin="0,8,0,0">
+          <ItemsControl ItemsSource="{Binding Items}" Margin="0,12,0,0" IsTabStop="False">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="{x:Type pages:DiagnosticItemRow}">
-                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8" Padding="14,12">
                   <Grid>
                     <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel>
+                    <TextBlock Style="{StaticResource IconTextStyle}" FontSize="20" Margin="0,1,12,0"
+                               VerticalAlignment="Top"
+                               Text="{Binding Item.Status, Converter={StaticResource DiagnosticStatusIconConverter}}"
+                               Foreground="{Binding Item.Status, Converter={StaticResource StatusToBrushConverter}}"
+                               ToolTip="{Binding Item.Status, Converter={StaticResource EnumTextConverter}}" />
+                    <StackPanel Grid.Column="1">
                       <StackPanel Orientation="Horizontal">
-                        <Border Style="{Binding Item.Status, Converter={StaticResource StatusToBadgeStyleConverter}}">
-                          <TextBlock Text="{Binding Item.Status}" />
+                        <TextBlock Text="{Binding Item.Title}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Border Style="{Binding Item.Status, Converter={StaticResource StatusToBadgeStyleConverter}}" Margin="8,0,0,0">
+                          <TextBlock Text="{Binding Item.Status, Converter={StaticResource EnumTextConverter}}" />
                         </Border>
-                        <TextBlock Text="{Binding Item.Title}" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
                       </StackPanel>
-                      <TextBlock Text="{Binding Item.Detail}" Style="{StaticResource MutedTextStyle}" Margin="0,6,0,0" />
-                      <TextBlock Text="{Binding Item.Hint}"
-                                 Style="{StaticResource CaptionMutedTextStyle}"
-                                 Margin="0,4,0,0"
-                                 Visibility="{Binding Item.Hint, Converter={StaticResource NullToVisibilityConverter}}" />
+                      <TextBlock Text="{Binding Item.Detail}" Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
+                      <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                 Visibility="{Binding Item.Hint, Converter={StaticResource NullToVisibilityConverter}}">
+                        <Run FontWeight="SemiBold" Text="Что исправить: " /><Run Text="{Binding Item.Hint, Mode=OneWay}" />
+                      </TextBlock>
                     </StackPanel>
-                    <ContentControl Grid.Column="1" Content="{Binding FixButton}" VerticalAlignment="Top"
+                    <ContentControl Grid.Column="2" Content="{Binding FixButton}" VerticalAlignment="Top"
                                     Visibility="{Binding FixButton, Converter={StaticResource NullToVisibilityConverter}}">
                       <ContentControl.ContentTemplate>
                         <DataTemplate>
                           <Button Style="{StaticResource FlatActionButtonStyle}"
-                                  Margin="8,0,0,0"
+                                  Margin="12,0,0,0"
                                   Command="{Binding Command}"
                                   IsEnabled="{Binding IsEnabled}"
                                   ToolTip="{Binding ToolTipText}"
                                   ToolTipService.ShowOnDisabled="True"
-                                  Content="{Binding Title}" />
+                                  AutomationProperties.Name="{Binding Title}">
+                            <StackPanel Orientation="Horizontal">
+                              <TextBlock Style="{StaticResource IconTextStyle}" FontSize="14" Margin="0,0,6,0"
+                                         Text="{Binding Icon, Converter={StaticResource IconGlyphConverter}}" />
+                              <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </Button>
                         </DataTemplate>
                       </ContentControl.ContentTemplate>
                     </ContentControl>
@@ -107,7 +157,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
 
-          <TextBlock Text="Нажмите «Запустить диагностику», чтобы проверить компьютер"
+          <TextBlock Text="Нажмите «Проверить», чтобы проверить компьютер"
                      Style="{StaticResource MutedTextStyle}"
                      Margin="0,16,0,0"
                      Visibility="{Binding Report, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}" />
@@ -116,10 +166,11 @@
 
       <StackPanel Style="{StaticResource EmptyStateStyle}"
                   Visibility="{Binding SelectedComputer, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}">
-        <TextBlock Text="&#xE9D9;" Style="{StaticResource IconTextStyle}" FontSize="40"
+        <TextBlock Text="{Binding Source=stethoscope, Converter={StaticResource IconGlyphConverter}}"
+                   Style="{StaticResource IconTextStyle}" FontSize="40"
                    Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
         <TextBlock Text="Выберите компьютер" Style="{StaticResource EmptyStateTitleStyle}" />
-        <TextBlock Text="Слева — все компьютеры домена. Выберите компьютер и запустите диагностику."
+        <TextBlock Text="Слева — все компьютеры домена. Выберите компьютер и нажмите «Проверить»."
                    Style="{StaticResource EmptyStateTextStyle}" />
       </StackPanel>
     </Grid>

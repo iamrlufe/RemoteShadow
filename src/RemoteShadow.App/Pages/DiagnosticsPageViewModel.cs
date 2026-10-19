@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Text;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using RemoteShadow.App.Shell;
@@ -58,6 +60,82 @@ public sealed partial class DiagnosticsPageViewModel : ObservableObject, INaviga
 
     [ObservableProperty]
     private DiagnosticReport? _report;
+
+    /// <summary>Итоговый статус отчёта для цвета и значка вывода: проблема, предупреждение, иначе «всё в порядке».</summary>
+    public DiagnosticStatus? VerdictStatus => Report is null
+        ? null
+        : Report.Items.Any(i => i.Status == DiagnosticStatus.Fail) ? DiagnosticStatus.Fail
+        : Report.Items.Any(i => i.Status == DiagnosticStatus.Warning) ? DiagnosticStatus.Warning
+        : Report.Items.Any(i => i.Status == DiagnosticStatus.Unknown) ? DiagnosticStatus.Unknown
+        : DiagnosticStatus.Ok;
+
+    /// <summary>Главный вывод крупным текстом: <see cref="DiagnosticReport.Verdict"/>, а если его нет — общий итог по проверкам.</summary>
+    public string? VerdictText
+    {
+        get
+        {
+            if (Report is null) return null;
+            if (!string.IsNullOrWhiteSpace(Report.Verdict)) return Report.Verdict;
+            return VerdictStatus switch
+            {
+                DiagnosticStatus.Fail => "Найдены проблемы",
+                DiagnosticStatus.Warning => "Есть замечания",
+                DiagnosticStatus.Unknown => "Часть проверок выполнить не удалось",
+                _ => "Проблем не найдено",
+            };
+        }
+    }
+
+    partial void OnReportChanged(DiagnosticReport? value)
+    {
+        OnPropertyChanged(nameof(VerdictStatus));
+        OnPropertyChanged(nameof(VerdictText));
+        CopyReportCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Отчёт текстом для письма или заявки. В нём только то, что вернула диагностика (имя, проверки, подсказки): секретов нет.</summary>
+    public string BuildReportText()
+    {
+        if (Report is null || SelectedComputer is null) return string.Empty;
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Диагностика компьютера {SelectedComputer.Name} ({Report.Host})");
+        sb.AppendLine($"Проверено: {Report.CreatedUtc.ToLocalTime():dd.MM.yyyy HH:mm:ss}");
+        sb.AppendLine($"Вывод: {VerdictText}");
+        sb.AppendLine();
+        foreach (var item in Report.Items)
+        {
+            sb.AppendLine($"[{StatusLabel(item.Status)}] {item.Title}: {item.Detail}");
+            if (!string.IsNullOrWhiteSpace(item.Hint)) sb.AppendLine($"    Что исправить: {item.Hint}");
+        }
+
+        return sb.ToString();
+    }
+
+    internal static string StatusLabel(DiagnosticStatus status) => status switch
+    {
+        DiagnosticStatus.Ok => "ОК",
+        DiagnosticStatus.Warning => "Внимание",
+        DiagnosticStatus.Fail => "Проблема",
+        _ => "Не проверено",
+    };
+
+    [RelayCommand(CanExecute = nameof(CanCopyReport))]
+    private void CopyReport()
+    {
+        try
+        {
+            Clipboard.SetDataObject(BuildReportText(), true);
+            _notifications.Success("Отчёт скопирован в буфер обмена");
+        }
+        catch (Exception ex)
+        {
+            // Буфер обмена может быть занят другой программой.
+            _notifications.Error($"Не удалось скопировать отчёт: {ex.Message}");
+        }
+    }
+
+    private bool CanCopyReport() => Report is not null && SelectedComputer is not null;
 
     public void OnNavigatedTo(object? parameter)
     {

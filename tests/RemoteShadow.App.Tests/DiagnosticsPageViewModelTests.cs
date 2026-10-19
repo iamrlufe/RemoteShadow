@@ -81,4 +81,41 @@ public sealed class DiagnosticsPageViewModelTests
 
         return true;
     }
+
+    [Fact]
+    public async Task Report_text_lists_every_check_and_hints_for_problems()
+    {
+        var fixture = new DemoFixture();
+        var computer = FindOnlineWithScenario(fixture, DemoDiagnosticScenario.TermServiceStopped);
+        var vm = CreateViewModel(fixture, out var index);
+        Assert.Equal(string.Empty, vm.BuildReportText());
+
+        vm.SelectedComputer = index.Find(computer.Id);
+        await vm.RunCommand.ExecuteAsync(null);
+
+        var text = vm.BuildReportText();
+        Assert.Contains(computer.Name, text);
+        Assert.Contains("Вывод:", text);
+        Assert.Contains("Что исправить:", text);
+        Assert.All(vm.Report!.Items, item => Assert.Contains(item.Title, text));
+        Assert.True(vm.CopyReportCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task Verdict_reflects_the_worst_check_status()
+    {
+        var fixture = new DemoFixture();
+        var vm = CreateViewModel(fixture, out var index);
+        Assert.Null(vm.VerdictStatus);
+        Assert.False(vm.CopyReportCommand.CanExecute(null));
+
+        vm.SelectedComputer = index.Find(FindOnlineWithScenario(fixture, DemoDiagnosticScenario.Healthy).Id);
+        await vm.RunCommand.ExecuteAsync(null);
+        Assert.Equal(DiagnosticStatus.Ok, vm.VerdictStatus);
+        Assert.False(string.IsNullOrWhiteSpace(vm.VerdictText));
+
+        vm.SelectedComputer = index.Find(FindOnlineWithScenario(fixture, DemoDiagnosticScenario.TermServiceStopped).Id);
+        await vm.RunCommand.ExecuteAsync(null);
+        Assert.True(vm.VerdictStatus is DiagnosticStatus.Fail or DiagnosticStatus.Warning);
+    }
 }
