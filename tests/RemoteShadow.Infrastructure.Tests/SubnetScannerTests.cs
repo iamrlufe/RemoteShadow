@@ -280,4 +280,30 @@ public class DeviceMergeServiceTests
         Assert.Equal(pc.Id, _service.Match(first, new[] { pc }));
         Assert.Equal(pc.Id, _service.Match(afterDhcpRenewal, new[] { pc }));
     }
+
+    [Fact]
+    public void Nameless_device_matches_the_single_ad_computer_with_that_ip()
+    {
+        var pc = Pc("SRV-A", id: 1) with { IpAddresses = new[] { "10.0.0.239" } };
+        var other = Pc("SRV-B", id: 2) with { IpAddresses = new[] { "10.0.0.231" } };
+
+        Assert.Equal(pc.Id, _service.Match(Device("10.0.0.239", null), new[] { pc, other }));
+    }
+
+    [Fact]
+    public void Nameless_device_with_ip_shared_by_two_ad_computers_is_left_unmatched()
+    {
+        var a = Pc("A", id: 1) with { IpAddresses = new[] { "10.0.0.5" } };
+        var b = Pc("B", id: 2) with { IpAddresses = new[] { "10.0.0.5" } };
+
+        Assert.Null(_service.Match(Device("10.0.0.5", null), new[] { a, b }));
+    }
+
+    [Fact]
+    public void Named_device_absent_from_ad_is_not_matched_by_ip()
+    {
+        var pc = Pc("PC-001", id: 1) with { IpAddresses = new[] { "10.0.0.7" } };
+
+        Assert.Null(_service.Match(Device("10.0.0.7", "other-host.other.net"), new[] { pc }));
+    }
 }

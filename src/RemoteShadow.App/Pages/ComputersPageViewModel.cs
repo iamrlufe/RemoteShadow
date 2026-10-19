@@ -841,8 +841,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             var seenThisScan = new HashSet<string>();
             await foreach (var device in _scanner.ScanAsync(subnet, progress, cts.Token).WithCancellation(cts.Token))
             {
-                var matchedId = _deviceMerge.Match(device, _index.All);
-                var merged = device with { MatchedComputerId = matchedId };
+                var merged = WithAdMatch(device);
 
                 seenThisScan.Add(merged.Key);
                 _discoveredByKey[merged.Key] = merged; // обновляем существующую запись по ключу — без дублей при повторном скане
@@ -885,6 +884,16 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         {
             if (ReferenceEquals(_scanCts, cts)) IsScanning = false;
         }
+    }
+
+    /// <summary>Сопоставляет найденное устройство с компьютером AD; если у устройства нет имени, берёт имя компьютера AD.</summary>
+    private DiscoveredDevice WithAdMatch(DiscoveredDevice device)
+    {
+        var matchedId = _deviceMerge.Match(device, _index.All);
+        var merged = device with { MatchedComputerId = matchedId };
+        if (matchedId is { } id && string.IsNullOrWhiteSpace(merged.Hostname) && _index.Find(id) is { } computer)
+            merged = merged with { Hostname = computer.Name, NameSource = "AD (по IP)" };
+        return merged;
     }
 
     [RelayCommand]

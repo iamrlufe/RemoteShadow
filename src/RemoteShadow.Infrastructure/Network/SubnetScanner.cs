@@ -245,10 +245,12 @@ public sealed class DeviceMergeService : IDeviceMergeService
         ArgumentNullException.ThrowIfNull(adComputers);
 
         var name = !string.IsNullOrWhiteSpace(device.ReverseDnsName) ? device.ReverseDnsName : device.Hostname;
-        if (string.IsNullOrWhiteSpace(name)) return null;
+        var shortName = string.IsNullOrWhiteSpace(name) ? string.Empty : ShortName(name);
 
-        var shortName = ShortName(name);
-        if (shortName.Length == 0) return null;
+        // Имя устройство не назвало (нет PTR, NetBIOS молчит, нет имени в RDP-сертификате): сопоставляем по IP, который
+        // у компьютера AD получен из его же DNS-записи при проверке доступности. Совпал ровно один компьютер — берём;
+        // несколько (общий адрес, NAT) — не гадаем.
+        if (shortName.Length == 0) return MatchByIp(device.IpAddress, adComputers);
 
         ComputerInfo? match = null;
         foreach (var computer in adComputers)
@@ -260,7 +262,22 @@ public sealed class DeviceMergeService : IDeviceMergeService
             match = computer;
         }
 
-        return match?.Id;
+        return match?.Id; // имя есть, но в AD такого нет: по IP не гадаем, там мог остаться чужой устаревший адрес
+    }
+
+    private static Guid? MatchByIp(string? ip, IReadOnlyList<ComputerInfo> adComputers)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) return null;
+
+        Guid? found = null;
+        foreach (var computer in adComputers)
+        {
+            if (computer.IpAddresses is not { Count: > 0 } addresses || !addresses.Contains(ip, StringComparer.Ordinal)) continue;
+            if (found is not null && found != computer.Id) return null;
+            found = computer.Id;
+        }
+
+        return found;
     }
 
     private static string ShortName(string name) => name.Trim().TrimEnd('.').Split('.')[0];

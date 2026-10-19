@@ -206,7 +206,7 @@ public sealed partial class ComputersPageViewModel
             };
         }
 
-        StoreDiscovered(updated with { MatchedComputerId = _deviceMerge.Match(updated, _index.All) });
+        StoreDiscovered(WithAdMatch(updated));
     }
 
     private void LoadDiscoveredFromSettings()
