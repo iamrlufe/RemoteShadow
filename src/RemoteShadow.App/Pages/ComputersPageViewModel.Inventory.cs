@@ -166,6 +166,7 @@ public sealed partial class ComputersPageViewModel
         }
         finally
         {
+            PersistDiscovered();
             if (ReferenceEquals(_enrichCts, cts))
             {
                 IsEnriching = false;
@@ -206,6 +207,31 @@ public sealed partial class ComputersPageViewModel
         }
 
         StoreDiscovered(updated with { MatchedComputerId = _deviceMerge.Match(updated, _index.All) });
+    }
+
+    private void LoadDiscoveredFromSettings()
+    {
+        var settings = _settingsStore.Load();
+        var subnetIds = settings.Subnets.Select(s => s.Id).ToHashSet();
+        foreach (var device in settings.DiscoveredDevices.Where(d => subnetIds.Contains(d.SubnetId)))
+        {
+            _discoveredByKey[device.Key] = device;
+            DiscoveredDevices.Add(device);
+        }
+    }
+
+    private void PersistDiscovered()
+    {
+        try
+        {
+            var settings = _settingsStore.Load();
+            settings.DiscoveredDevices = _discoveredByKey.Values.ToList();
+            _settingsStore.Save(settings);
+        }
+        catch (Exception ex)
+        {
+            _notifications.Error($"Не удалось сохранить найденные устройства: {ex.Message}");
+        }
     }
 
     /// <summary>Кладёт обновлённую запись в словарь и список, сохраняя выбор пользователя.</summary>

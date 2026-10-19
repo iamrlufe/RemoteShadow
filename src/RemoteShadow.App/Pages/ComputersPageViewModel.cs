@@ -90,6 +90,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
         LoadFilterFromSettings();
         ReloadGroupsAndSubnets();
+        LoadDiscoveredFromSettings();
         RefreshComputers();
     }
 
@@ -859,6 +860,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             }
 
             ScanStatus = $"Готово: найдено {Plural.Format(foundKeysThisScan.Count, "устройство", "устройства", "устройств")}.";
+            PersistDiscovered();
             StartAutoEnrichmentIfEnabled();
         }
         catch (OperationCanceledException)

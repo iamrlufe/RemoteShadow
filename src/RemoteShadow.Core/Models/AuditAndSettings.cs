@@ -96,6 +96,9 @@ public sealed class AppSettings
     /// <summary>Сразу сканировать только что добавленную подсеть (если в ней не больше 1024 адресов).</summary>
     public bool AutoScanNewSubnet { get; set; } = true;
 
+    /// <summary>Устройства, найденные сканированием подсетей, со всеми собранными сведениями: переживают перезапуск.</summary>
+    public List<DiscoveredDevice> DiscoveredDevices { get; set; } = new();
+
     // ----- Группы, подсети, фильтры раздела «Компьютеры» --------------------------------------------------------
 
     public List<ComputerGroup> ComputerGroups { get; set; } = new();
