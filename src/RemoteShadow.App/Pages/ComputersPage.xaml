@@ -26,9 +26,9 @@
         <Button Content="Обновить список" Command="{Binding RefreshListCommand}" Margin="0,0,4,4"
                 ToolTip="Заново загрузить все компьютеры из AD (новые, переименованные, включённые или отключённые в каталоге). Доступность не проверяет."
                 AutomationProperties.Name="Обновить список" />
-        <Button Content="Обновить доступность" Command="{Binding RefreshVisibleAvailabilityCommand}" Margin="0,0,4,4"
+        <Button Content="Обновить статусы" Command="{Binding RefreshVisibleAvailabilityCommand}" Margin="0,0,4,4"
                 ToolTip="Повторно проверить DNS, ping, RDP, SMB и SSH для компьютеров текущей области (поиск, группа, подразделение). Фильтры по доступности, протоколам и IP при выборе области не учитываются, поэтому ранее выключенный компьютер будет проверен снова."
-                AutomationProperties.Name="Обновить доступность" />
+                AutomationProperties.Name="Обновить статусы" />
         <CheckBox Content="★ Только избранные" IsChecked="{Binding OnlyFavorites}" VerticalAlignment="Center" Margin="4,0,8,4"
                   AutomationProperties.Name="Только избранные" />
         <Button Content="{Binding IsSelectedFavorite, Converter={StaticResource FavoriteButtonTextConverter}}"
@@ -52,16 +52,11 @@
       </Grid>
 
       <!-- Дерево: доступность / избранное / группы / подсети -->
-      <Expander DockPanel.Dock="Top" Header="Группы и подсети" Margin="0,0,0,8" IsExpanded="False">
+      <Expander x:Name="GroupsExpander" DockPanel.Dock="Top" Header="Группы и подсети" Margin="0,0,0,8" IsExpanded="False"
+                Expanded="OnGroupsExpanded">
         <!-- Без прокрутки раскрытая панель занимает всю высоту и сжимает список компьютеров до нуля -->
-        <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,8,8,0">
-          <TextBlock Text="Доступность" Style="{StaticResource CaptionMutedTextStyle}" />
-          <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding AvailabilityFilterValues}" SelectedItem="{Binding AvailabilityFilter}" AutomationProperties.Name="Фильтр по доступности" Margin="0,2,0,8" />
-
-          <TextBlock Text="Источник" Style="{StaticResource CaptionMutedTextStyle}" />
-          <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding SourceFilterValues}" SelectedItem="{Binding SourceFilter}" AutomationProperties.Name="Фильтр по источнику" Margin="0,2,0,8" />
-
           <TextBlock Text="Мои группы" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,2" />
           <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup, Mode=TwoWay}"
                    BorderThickness="0" Background="Transparent" MaxHeight="120"
@@ -161,6 +156,7 @@
                      Visibility="{Binding ScanStatus, Converter={StaticResource NullToVisibilityConverter}}" />
           <Button Content="Отменить сканирование" Command="{Binding CancelScanCommand}"
                   Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,4,0,0" />
+          <Button Content="Свернуть ▲" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnCollapseGroups" AutomationProperties.Name="Свернуть группы и подсети" />
         </StackPanel>
         </ScrollViewer>
       </Expander>
@@ -178,41 +174,58 @@
                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                    Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
       </Grid>
-      <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <Grid Margin="0,0,4,0">
-          <TextBox Padding="8,6" Text="{Binding IpFilter, UpdateSourceTrigger=PropertyChanged}"
-                   ToolTip="Известен после «Обновить доступность» или сканирования подсети"
-                   AutomationProperties.Name="Фильтр по IP-адресу" />
-          <TextBlock Text="IP-адрес" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                     Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                     Visibility="{Binding IpFilter, Converter={StaticResource EmptyToVisibilityConverter}}" />
-        </Grid>
-        <Grid Grid.Column="1" Margin="4,0,0,0">
-          <TextBox Padding="8,6" Text="{Binding OuFilter, UpdateSourceTrigger=PropertyChanged}"
-                   ToolTip="Часть пути подразделения, например Бухгалтерия"
-                   AutomationProperties.Name="Фильтр по подразделению (OU)" />
-          <TextBlock Text="Подразделение (OU)" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
-                     Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                     Visibility="{Binding OuFilter, Converter={StaticResource EmptyToVisibilityConverter}}" />
-        </Grid>
-      </Grid>
-      <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-        <CheckBox Content="RDP" IsChecked="{Binding FilterRdp}" Margin="0,0,10,0" />
-        <CheckBox Content="SMB" IsChecked="{Binding FilterSmb}" Margin="0,0,10,0" />
-        <CheckBox Content="SSH" IsChecked="{Binding FilterSsh}" Margin="0,0,10,0" />
-        <CheckBox Content="Показывать отключённые" IsChecked="{Binding ShowDisabledAd}" Margin="0,0,10,0" />
-      </WrapPanel>
-      <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-        <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding SortByValues}" SelectedItem="{Binding SortBy}" AutomationProperties.Name="Сортировка" />
-      </Grid>
+
+      <!-- Фильтры: свёрнуты по умолчанию, раскрытая панель прокручивается и не вытесняет список -->
+      <Expander x:Name="FiltersExpander" DockPanel.Dock="Top" Header="Фильтры и сортировка" Margin="0,0,0,8" IsExpanded="False"
+                Expanded="OnFiltersExpanded">
+        <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="0,8,8,0">
+            <TextBlock Text="Доступность" Style="{StaticResource CaptionMutedTextStyle}" />
+            <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding AvailabilityFilterValues}" SelectedItem="{Binding AvailabilityFilter}" AutomationProperties.Name="Фильтр по доступности" Margin="0,2,0,8" />
+
+            <TextBlock Text="Источник" Style="{StaticResource CaptionMutedTextStyle}" />
+            <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding SourceFilterValues}" SelectedItem="{Binding SourceFilter}" AutomationProperties.Name="Фильтр по источнику" Margin="0,2,0,8" />
+
+          <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Margin="0,0,4,0">
+              <TextBox Padding="8,6" Text="{Binding IpFilter, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="Известен после «Обновить доступность» или сканирования подсети"
+                       AutomationProperties.Name="Фильтр по IP-адресу" />
+              <TextBlock Text="IP-адрес" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                         Visibility="{Binding IpFilter, Converter={StaticResource EmptyToVisibilityConverter}}" />
+            </Grid>
+            <Grid Grid.Column="1" Margin="4,0,0,0">
+              <TextBox Padding="8,6" Text="{Binding OuFilter, UpdateSourceTrigger=PropertyChanged}"
+                       ToolTip="Часть пути подразделения, например Бухгалтерия"
+                       AutomationProperties.Name="Фильтр по подразделению (OU)" />
+              <TextBlock Text="Подразделение (OU)" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                         Visibility="{Binding OuFilter, Converter={StaticResource EmptyToVisibilityConverter}}" />
+            </Grid>
+          </Grid>
+          <WrapPanel Margin="0,0,0,8">
+            <CheckBox Content="RDP" IsChecked="{Binding FilterRdp}" Margin="0,0,10,0" />
+            <CheckBox Content="SMB" IsChecked="{Binding FilterSmb}" Margin="0,0,10,0" />
+            <CheckBox Content="SSH" IsChecked="{Binding FilterSsh}" Margin="0,0,10,0" />
+            <CheckBox Content="Показывать отключённые" IsChecked="{Binding ShowDisabledAd}" Margin="0,0,10,0" />
+          </WrapPanel>
+          <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding SortByValues}" SelectedItem="{Binding SortBy}" AutomationProperties.Name="Сортировка" />
+          </Grid>
+            <Button Content="Свернуть ▲" HorizontalAlignment="Left" Click="OnCollapseFilters" AutomationProperties.Name="Свернуть фильтры" />
+          </StackPanel>
+        </ScrollViewer>
+      </Expander>
+
 
       <Expander DockPanel.Dock="Bottom" Header="Найдено сканированием (вне AD / требует проверки)" IsExpanded="False"
                 Visibility="{Binding DiscoveredDevices.Count, Converter={StaticResource EmptyToVisibilityConverter}, ConverterParameter=invert}">
@@ -237,10 +250,13 @@
       <TextBlock DockPanel.Dock="Top" Text="{Binding ActiveFiltersSummary}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
                  Visibility="{Binding ActiveFiltersSummary, Converter={StaticResource NullToVisibilityConverter}}" />
 
+      <TextBlock DockPanel.Dock="Top" Text="{Binding AutoCheckHint}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
+                 Visibility="{Binding AutoCheckHint, Converter={StaticResource NullToVisibilityConverter}}" />
+
       <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyListHint}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
                  Visibility="{Binding EmptyListHint, Converter={StaticResource NullToVisibilityConverter}}" />
 
-      <ListBox ItemsSource="{Binding Computers}"
+      <ListBox ItemsSource="{Binding Computers}" MinHeight="120"
                SelectedItem="{Binding SelectedComputer, Mode=TwoWay}"
                BorderThickness="0"
                Background="Transparent"

@@ -130,4 +130,57 @@ public sealed class ComputersPageRefreshTests
         vm.ShowDisabledAd = false;
         Assert.Contains("отключённые в AD", vm.ActiveFiltersSummary);
     }
+
+    [Fact]
+    public async Task Statuses_are_checked_automatically_when_the_page_opens_for_a_small_area()
+    {
+        var (vm, index, probe, _, computers) = Create();
+        probe.PoweredOn.Add(computers[0].HostName);
+        vm.AutoCheckDelay = TimeSpan.Zero;
+        Assert.All(index.All, c => Assert.Equal(AvailabilityStatus.Unknown, c.AvailabilityStatus));
+
+        vm.OnNavigatedTo(null);
+        await vm.AutoCheckTask;
+
+        Assert.Equal(AvailabilityStatus.Online, index.Find(computers[0].Id)!.AvailabilityStatus);
+        Assert.All(index.All.Skip(1), c => Assert.Equal(AvailabilityStatus.Offline, c.AvailabilityStatus));
+        Assert.Null(vm.AutoCheckHint);
+    }
+
+    [Fact]
+    public async Task Automatic_check_is_skipped_for_a_large_area_and_the_reason_is_shown()
+    {
+        var (vm, index, _, fixture, computers) = Create();
+        var settings = fixture.Settings.Load();
+        settings.AutoCheckAvailabilityMax = 2;
+        fixture.Settings.Save(settings);
+        vm.AutoCheckDelay = TimeSpan.Zero;
+
+        vm.OnNavigatedTo(null);
+        await vm.AutoCheckTask;
+
+        Assert.All(index.All, c => Assert.Equal(AvailabilityStatus.Unknown, c.AvailabilityStatus));
+        Assert.Contains("Обновить статусы", vm.AutoCheckHint);
+
+        vm.SearchText = computers[0].Name; // область сузилась до лимита — проверка пошла сама
+        await vm.AutoCheckTask;
+        Assert.Null(vm.AutoCheckHint);
+        Assert.NotNull(index.Find(computers[0].Id)!.LastCheckedUtc);
+        Assert.Null(index.Find(computers[5].Id)!.LastCheckedUtc);
+    }
+
+    [Fact]
+    public async Task Automatic_check_can_be_turned_off()
+    {
+        var (vm, index, _, fixture, _) = Create();
+        var settings = fixture.Settings.Load();
+        settings.AutoCheckAvailabilityMax = 0;
+        fixture.Settings.Save(settings);
+        vm.AutoCheckDelay = TimeSpan.Zero;
+
+        vm.OnNavigatedTo(null);
+        await vm.AutoCheckTask;
+
+        Assert.All(index.All, c => Assert.Equal(AvailabilityStatus.Unknown, c.AvailabilityStatus));
+    }
 }

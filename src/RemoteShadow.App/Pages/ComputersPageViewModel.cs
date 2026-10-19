@@ -222,6 +222,8 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
     public void OnNavigatedTo(object? parameter)
     {
+        ScheduleAutoCheck();
+
         switch (parameter)
         {
             case SelectComputerRequest request:
@@ -236,7 +238,12 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         }
     }
 
-    partial void OnSearchTextChanged(string value) => RefreshComputers();
+    partial void OnSearchTextChanged(string value)
+    {
+        RefreshComputers();
+        ScheduleAutoCheck();
+    }
+
     partial void OnAvailabilityFilterChanged(AvailabilityFilter value) => OnFilterChanged();
     partial void OnSourceFilterChanged(ComputerSourceFilter value) => OnFilterChanged();
     partial void OnNameFilterChanged(string value) => OnFilterChanged();
@@ -288,10 +295,15 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
     partial void OnNoConsentChanged(bool value) => RebuildSessionButtons();
 
-    partial void OnOnlyFavoritesChanged(bool value) => RefreshComputers();
+    partial void OnOnlyFavoritesChanged(bool value)
+    {
+        RefreshComputers();
+        ScheduleAutoCheck();
+    }
 
     partial void OnSelectedGroupChanged(ComputerGroup? value)
     {
+        ScheduleAutoCheck();
         OnPropertyChanged(nameof(HasSelectedGroup));
         RefreshComputers();
     }
@@ -537,6 +549,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         _settingsStore.Save(settings);
 
         RefreshComputers();
+        ScheduleAutoCheck();
     }
 
     private void LoadFilterFromSettings()
@@ -840,6 +853,70 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
     // ----- доступность (ручное обновление, никогда не само по себе) -------------------------------------------------
 
+    // ----- автоматическая проверка статусов (небольшая область) ------------------------------------------------------
+
+    private static readonly TimeSpan AutoCheckFreshness = TimeSpan.FromMinutes(2);
+
+    private CancellationTokenSource? _autoCts;
+
+    /// <summary>Задержка перед автопроверкой: пока пользователь печатает, сеть не опрашивается.</summary>
+    public TimeSpan AutoCheckDelay { get; set; } = TimeSpan.FromMilliseconds(700);
+
+    /// <summary>Выполняющаяся автопроверка (для тестов).</summary>
+    public Task AutoCheckTask { get; private set; } = Task.CompletedTask;
+
+    /// <summary>Объясняет, почему статусы не проверились сами (область слишком велика); null — всё в порядке.</summary>
+    [ObservableProperty]
+    private string? _autoCheckHint;
+
+    private void ScheduleAutoCheck()
+    {
+        if (_disposed || _loadingFilterFromSettings) return;
+
+        _autoCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _autoCts = cts;
+        AutoCheckTask = AutoCheckAsync(cts.Token);
+    }
+
+    private async Task AutoCheckAsync(CancellationToken ct)
+    {
+        try
+        {
+            var max = _settingsStore.Load().AutoCheckAvailabilityMax;
+            if (max <= 0)
+            {
+                AutoCheckHint = null;
+                return;
+            }
+
+            if (AutoCheckDelay > TimeSpan.Zero) await Task.Delay(AutoCheckDelay, ct);
+
+            var scope = AvailabilityScope();
+            if (scope.Count > max)
+            {
+                AutoCheckHint = $"Статусы сами не проверяются: в области {scope.Count} компьютеров (лимит {max}). Сузьте поиск, выберите группу или нажмите «Обновить статусы».";
+                return;
+            }
+
+            AutoCheckHint = null;
+            var threshold = DateTime.UtcNow - AutoCheckFreshness;
+            var stale = scope.Where(c => c.LastCheckedUtc is null || c.LastCheckedUtc < threshold).ToList();
+            if (stale.Count == 0) return;
+
+            await _availability.RefreshAsync(stale, force: false, ct);
+            if (!ct.IsCancellationRequested && !_disposed) RefreshComputers();
+        }
+        catch (OperationCanceledException)
+        {
+            // Область изменилась или страницу закрыли — новая проверка уже запланирована.
+        }
+        catch (Exception ex)
+        {
+            _notifications.Error($"Не удалось проверить статусы: {ex.Message}");
+        }
+    }
+
     /// <summary>«Обновить список»: повторная загрузка компьютеров из AD (полная), без проверки доступности.</summary>
     [RelayCommand]
     private async Task RefreshListAsync()
@@ -882,6 +959,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             if (!confirmed) return;
         }
 
+        _autoCts?.Cancel();
         _availabilityCts?.Cancel();
         var cts = new CancellationTokenSource();
         _availabilityCts = cts;
@@ -910,6 +988,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         _disposed = true;
 
         _index.Changed -= OnIndexChanged;
+        _autoCts?.Cancel();
         _computerPresenter.PropertyChanged -= OnComputerPresenterPropertyChanged;
         _sessionPresenter.PropertyChanged -= OnSessionPresenterPropertyChanged;
         _sessionsCts?.Cancel();
