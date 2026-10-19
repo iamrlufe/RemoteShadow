@@ -1,0 +1,25 @@
+<!--
+  Фирменная палитра (индиго, рекомендация ui-ux-pro-max: Soft UI Evolution).
+  Здесь — значения для светлой темы по умолчанию; ThemeService подменяет те же ключи в Application.Resources
+  под эффективную тему (светлая/тёмная), поэтому переопределённые ключи Fluent работают в обеих темах.
+  Контраст: белый на #4F46E5 — 6.3:1; #0F172A на #818CF8 — 6.6:1 (оба выше нормы 4.5:1).
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="#4F46E5" />
+  <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="#4338CA" />
+  <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="#3730A3" />
+  <SolidColorBrush x:Key="AccentFillColorDisabledBrush" Color="#A5A8D8" />
+  <SolidColorBrush x:Key="AccentTextFillColorPrimaryBrush" Color="#4338CA" />
+  <SolidColorBrush x:Key="AccentTextFillColorSecondaryBrush" Color="#3730A3" />
+  <SolidColorBrush x:Key="AccentTextFillColorTertiaryBrush" Color="#6366F1" />
+  <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="TextOnAccentFillColorDisabledBrush" Color="#E8E9F7" />
+
+  <!-- Наши: фон выбранной строки / наведения на навигацию, кольцо фокуса. -->
+  <SolidColorBrush x:Key="RsAccentSubtleBrush" Color="#1A4F46E5" />
+  <SolidColorBrush x:Key="RsAccentSubtleHoverBrush" Color="#264F46E5" />
+  <SolidColorBrush x:Key="RsFocusRingBrush" Color="#4F46E5" />
+
+</ResourceDictionary>

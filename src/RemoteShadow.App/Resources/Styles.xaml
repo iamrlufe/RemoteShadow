@@ -39,7 +39,7 @@
   </Style>
 
   <Style x:Key="PageTitleStyle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="24" />
+    <Setter Property="FontSize" Value="22" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
   </Style>
@@ -69,8 +69,8 @@
   <Style x:Key="GroupHeaderStyle" TargetType="TextBlock">
     <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Margin" Value="0,4,0,6" />
-    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    <Setter Property="Margin" Value="0,8,0,6" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
   </Style>
 
   <Style x:Key="EmptyStateTitleStyle" TargetType="TextBlock">
@@ -100,8 +100,13 @@
     <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Padding" Value="16" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="18" />
+    <Setter Property="Effect">
+      <Setter.Value>
+        <DropShadowEffect BlurRadius="12" ShadowDepth="1" Direction="270" Opacity="0.07" />
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <Style x:Key="DividerStyle" TargetType="Border">
@@ -123,9 +128,9 @@
     <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="Padding" Value="12,5" />
+    <Setter Property="Padding" Value="14,6" />
     <Setter Property="Margin" Value="0,0,8,8" />
-    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="MinHeight" Value="34" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -137,7 +142,7 @@
                   Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="4"
+                  CornerRadius="6"
                   Padding="{TemplateBinding Padding}"
                   SnapsToDevicePixels="True">
             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -152,7 +157,8 @@
               <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RsFocusRingBrush}" />
+              <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
@@ -170,8 +176,8 @@
     <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorOnAccentDefaultBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="Padding" Value="16,5" />
-    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="18,6" />
+    <Setter Property="MinHeight" Value="34" />
     <Setter Property="MinWidth" Value="96" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -184,7 +190,7 @@
                   Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="4"
+                  CornerRadius="6"
                   Padding="{TemplateBinding Padding}"
                   SnapsToDevicePixels="True">
             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -199,7 +205,7 @@
               <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RsFocusRingBrush}" />
               <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
@@ -222,7 +228,7 @@
                   Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="4"
+                  CornerRadius="6"
                   Padding="{TemplateBinding Padding}"
                   SnapsToDevicePixels="True">
             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -237,7 +243,7 @@
               <Setter TargetName="Bd" Property="Opacity" Value="0.75" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RsFocusRingBrush}" />
               <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
@@ -272,7 +278,7 @@
                   Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="4"
+                  CornerRadius="6"
                   SnapsToDevicePixels="True">
             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
@@ -285,7 +291,8 @@
               <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RsFocusRingBrush}" />
+              <Setter TargetName="Bd" Property="BorderThickness" Value="2" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
@@ -334,7 +341,7 @@
           </StackPanel>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource RsFocusRingBrush}" />
             </Trigger>
             <Trigger Property="IsChecked" Value="True">
               <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
@@ -351,7 +358,7 @@
               <Setter TargetName="Box" Property="Opacity" Value="0.85" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource RsFocusRingBrush}" />
               <Setter TargetName="Box" Property="BorderThickness" Value="2" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
@@ -430,7 +437,7 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="Transparent"
                     BorderThickness="1"
-                    CornerRadius="4"
+                    CornerRadius="6"
                     Padding="{TemplateBinding Padding}"
                     SnapsToDevicePixels="True">
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -438,7 +445,7 @@
             </Border>
             <Border x:Name="Accent"
                     Width="3"
-                    Height="16"
+                    Height="18"
                     CornerRadius="1.5"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
@@ -450,7 +457,7 @@
               <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
             </Trigger>
             <Trigger Property="IsSelected" Value="True">
-              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RsAccentSubtleBrush}" />
               <Setter TargetName="Accent" Property="Visibility" Value="Visible" />
             </Trigger>
             <MultiTrigger>
@@ -458,10 +465,10 @@
                 <Condition Property="IsSelected" Value="True" />
                 <Condition Property="IsMouseOver" Value="True" />
               </MultiTrigger.Conditions>
-              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RsAccentSubtleHoverBrush}" />
             </MultiTrigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RsFocusRingBrush}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
@@ -497,8 +504,8 @@
 
   <Style x:Key="BadgeStyle" TargetType="Border">
     <Setter Property="Background" Value="{DynamicResource SystemFillColorNeutralBackgroundBrush}" />
-    <Setter Property="CornerRadius" Value="4" />
-    <Setter Property="Padding" Value="6,1,6,2" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="8,1,8,2" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="HorizontalAlignment" Value="Left" />
     <Setter Property="TextElement.FontSize" Value="12" />

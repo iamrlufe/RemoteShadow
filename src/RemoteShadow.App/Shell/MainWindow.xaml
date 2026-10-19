@@ -149,7 +149,7 @@
 
     <!-- ===== Верхняя строка ===== -->
     <Border Grid.Row="0"
-            Padding="16,8"
+            Padding="16,10"
             Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
             BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
             BorderThickness="0,0,0,1">
@@ -161,11 +161,14 @@
         </Grid.ColumnDefinitions>
 
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBlock Text="&#xE7B3;"
-                     Style="{StaticResource IconTextStyle}"
-                     FontSize="20"
-                     Margin="0,0,10,0"
-                     Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+          <Border Width="32" Height="32" CornerRadius="8" Margin="0,0,10,0"
+                  Background="{DynamicResource AccentFillColorDefaultBrush}">
+            <TextBlock Text="&#xE7B3;"
+                       Style="{StaticResource IconTextStyle}"
+                       FontSize="17"
+                       HorizontalAlignment="Center"
+                       Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+          </Border>
           <TextBlock Text="RemoteShadow"
                      FontSize="16"
                      FontWeight="SemiBold"
@@ -292,14 +295,14 @@
     <!-- ===== Навигация и содержимое ===== -->
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="220" />
+        <ColumnDefinition Width="232" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 
       <Border Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}">
         <ListBox x:Name="NavList"
-                 Padding="8"
+                 Padding="10,12"
                  BorderThickness="0"
                  Background="Transparent"
                  AutomationProperties.Name="Разделы"
@@ -309,10 +312,11 @@
                  ItemContainerStyle="{StaticResource ListItemStyle}">
           <ListBox.ItemTemplate>
             <DataTemplate DataType="{x:Type shell:NavItem}">
-              <StackPanel Orientation="Horizontal" Margin="2,2">
+              <StackPanel Orientation="Horizontal" Margin="4,3">
                 <TextBlock Style="{StaticResource IconTextStyle}"
                            Width="22"
-                           Text="{Binding Glyph}" />
+                           Text="{Binding Glyph}"
+                           Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
                 <TextBlock Text="{Binding Title}"
                            Margin="12,0,0,0"
                            VerticalAlignment="Center" />
