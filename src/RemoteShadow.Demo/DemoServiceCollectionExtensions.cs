@@ -59,6 +59,8 @@ public static class DemoServiceCollectionExtensions
             sp.GetRequiredService<DemoData>(), sp.GetRequiredService<DemoNetworkMap>(), sp.GetService<TimeProvider>() ?? TimeProvider.System, sp.GetRequiredService<DemoTimings>()));
         services.AddSingleton<ISubnetScanner>(sp => sp.GetRequiredService<DemoSubnetScanner>());
 
+        services.AddSingleton<IDeviceInventoryService, DemoDeviceInventoryService>();
+
         services.AddSingleton(_ => new DemoProcessLauncher());
         services.AddSingleton<IProcessLauncher>(sp => sp.GetRequiredService<DemoProcessLauncher>());
 
