@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace RemoteShadow.Core.Models;
 
 /// <summary>Какие протоколы проверять при опросе подсети/компьютера.</summary>
@@ -98,6 +100,20 @@ public sealed record DiscoveredDevice
 
     /// <summary>Остальные сведения (процессор, память, диски, пользователь, время загрузки) в виде «название — значение».</summary>
     public IReadOnlyDictionary<string, string>? Details { get; init; }
+
+    /// <summary>Что показать в списке: имя, а если его нет, IP.</summary>
+    [JsonIgnore]
+    public string DisplayName => !string.IsNullOrWhiteSpace(Hostname) ? Hostname : !string.IsNullOrWhiteSpace(ReverseDnsName) ? ReverseDnsName : IpAddress;
+
+    /// <summary>Вторая строка списка: IP, тип, ОС или производитель, MAC — только то, что известно.</summary>
+    [JsonIgnore]
+    public string Summary => string.Join(" · ", new[]
+    {
+        DisplayName == IpAddress ? null : IpAddress,
+        DeviceKind,
+        OsName ?? Vendor,
+        Mac,
+    }.Where(x => !string.IsNullOrWhiteSpace(x)));
 
     /// <summary>Когда собраны сведения по WinRM/WMI; null — не собирались.</summary>
     public DateTime? EnrichedUtc { get; init; }

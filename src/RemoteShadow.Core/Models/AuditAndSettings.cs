@@ -90,6 +90,9 @@ public sealed class AppSettings
     /// </summary>
     public int AutoCheckAvailabilityMax { get; set; } = 300;
 
+    /// <summary>Собирать сведения об устройствах, найденных сканированием, по WinRM сразу после скана.</summary>
+    public bool AutoCollectDeviceInfo { get; set; } = true;
+
     // ----- Группы, подсети, фильтры раздела «Компьютеры» --------------------------------------------------------
 
     public List<ComputerGroup> ComputerGroups { get; set; } = new();

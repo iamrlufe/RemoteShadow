@@ -320,23 +320,41 @@
       </Expander>
 
 
-      <Expander DockPanel.Dock="Bottom" Header="Найдено сканированием (вне AD / требует проверки)" IsExpanded="False"
+      <Expander DockPanel.Dock="Bottom" Header="Найдено сканированием" IsExpanded="False"
                 Visibility="{Binding DiscoveredDevices.Count, Converter={StaticResource EmptyToVisibilityConverter}, ConverterParameter=invert}">
-        <ListBox ItemsSource="{Binding DiscoveredDevices}" BorderThickness="0" Background="Transparent" MaxHeight="160"
-                 ItemContainerStyle="{StaticResource ListItemStyle}" AutomationProperties.Name="Устройства, найденные сканированием">
-          <ListBox.ItemTemplate>
-            <DataTemplate DataType="{x:Type models:DiscoveredDevice}">
-              <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding IpAddress}" Margin="0,0,8,0" />
-                <TextBlock Text="{Binding ReverseDnsName}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,8,0" />
-                <TextBlock Text="не в AD" Style="{StaticResource CaptionMutedTextStyle}"
-                           Visibility="{Binding MatchedComputerId, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}" />
-                <TextBlock Text="не найден при последнем скане" Style="{StaticResource CaptionMutedTextStyle}"
-                           Visibility="{Binding FoundInLastScan, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}" />
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+        <StackPanel>
+          <TextBlock Text="{Binding EnrichStatus}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
+                     Visibility="{Binding EnrichStatus, Converter={StaticResource NullToVisibilityConverter}}" />
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <Button Content="Пауза" Command="{Binding PauseEnrichmentCommand}" Margin="0,0,4,0"
+                    Visibility="{Binding IsEnriching, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <Button Content="Продолжить сбор сведений" Command="{Binding ResumeEnrichmentCommand}" Margin="0,0,4,0"
+                    Visibility="{Binding CanResumeEnrichment, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <Button Content="Опросить выбранное" Command="{Binding CollectSelectedDeviceCommand}" />
+          </StackPanel>
+          <ListBox ItemsSource="{Binding DiscoveredDevices}" SelectedItem="{Binding SelectedDiscovered, Mode=TwoWay}"
+                   BorderThickness="0" Background="Transparent" MaxHeight="220"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   ItemContainerStyle="{StaticResource ListItemStyle}" AutomationProperties.Name="Устройства, найденные сканированием">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="{x:Type models:DiscoveredDevice}">
+                <StackPanel>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Margin="0,0,8,0" />
+                    <TextBlock Text="не в AD" Style="{StaticResource CaptionMutedTextStyle}"
+                               Visibility="{Binding MatchedComputerId, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding Summary}" Style="{StaticResource CaptionMutedTextStyle}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="не найден при последнем скане" Style="{StaticResource CaptionMutedTextStyle}"
+                             Visibility="{Binding FoundInLastScan, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <TextBox Text="{Binding SelectedDiscoveredText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="200"
+                   VerticalScrollBarVisibility="Auto" Margin="0,6,0,0" AutomationProperties.Name="Сведения об устройстве"
+                   Visibility="{Binding SelectedDiscoveredText, Converter={StaticResource NullToVisibilityConverter}}" />
+        </StackPanel>
       </Expander>
 
       <TextBlock DockPanel.Dock="Top" Text="{Binding ListSummary}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4" />

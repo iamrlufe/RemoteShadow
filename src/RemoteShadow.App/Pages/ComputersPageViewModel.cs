@@ -67,8 +67,10 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         IDeviceMergeService deviceMerge,
         IDialogService dialogs,
         IUserLocator? locator = null,
-        INavigationService? navigation = null)
+        INavigationService? navigation = null,
+        IDeviceInventoryService? inventory = null)
     {
+        _inventory = inventory;
         _index = index;
         _sessions = sessions;
         _notifications = notifications;
@@ -853,6 +855,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             }
 
             ScanStatus = $"Готово: найдено {Plural.Format(foundKeysThisScan.Count, "устройство", "устройства", "устройств")}.";
+            StartAutoEnrichmentIfEnabled();
         }
         catch (OperationCanceledException)
         {
@@ -1038,6 +1041,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         _sessionsCts?.Cancel();
         _availabilityCts?.Cancel();
         _scanCts?.Cancel();
+        _enrichCts?.Cancel();
         _findCts?.Cancel();
     }
 }
