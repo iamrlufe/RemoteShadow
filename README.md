@@ -8,7 +8,7 @@
 
 ## Скачать
 
-Готовая сборка для Windows x64 — на странице [Releases](https://github.com/iamrlufe/RemoteShadow/releases/latest): файл `RemoteShadow-v0.1.0-win-x64.zip`. Распакуйте и запустите `RemoteShadow.exe`.
+Готовая сборка для Windows x64 — на странице [Releases](https://github.com/iamrlufe/RemoteShadow/releases/latest): файл `RemoteShadow-<версия>-win-x64.zip`. Распакуйте и запустите `RemoteShadow.exe`.
 
 Чтобы посмотреть интерфейс без домена, запустите демо-режим:
 
