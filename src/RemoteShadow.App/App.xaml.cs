@@ -23,6 +23,8 @@ public partial class App : Application
 {
     private ServiceProvider? _services;
 
+    private SingleInstanceGuard? _instanceGuard;
+
     public App()
     {
         new UnhandledExceptionHandler().Install(this);
@@ -69,6 +71,7 @@ public partial class App : Application
         }
 
         _services?.Dispose();
+        _instanceGuard?.Dispose();
         base.OnExit(e);
     }
 
@@ -81,6 +84,17 @@ public partial class App : Application
             ? new AppPaths(Path.Combine(Path.GetTempPath(), "RemoteShadow-Demo"))
             : new AppPaths();
         CrashLog.Initialize(paths.DataDir);
+
+        // Два экземпляра с общим settings.json затирают правки друг друга.
+        _instanceGuard = SingleInstanceGuard.TryAcquire(paths.DataDir);
+        if (_instanceGuard is null)
+        {
+            MessageBox.Show(
+                "RemoteShadow уже запущен. Закройте другое окно или используйте его.",
+                "RemoteShadow", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
 
         var services = BuildServices(options, paths);
         _services = services;

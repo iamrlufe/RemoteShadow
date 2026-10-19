@@ -160,6 +160,23 @@ public class DemoNetworkServicesTests
         Assert.Equal(new[] { customFavorite }, settings.FavoriteComputers);
     }
 
+    [Fact]
+    public void Seeding_does_not_refill_after_user_deleted_everything()
+    {
+        var data = TestSupport.Data();
+        var settings = new AppSettings();
+        DemoSettingsSeeding.SeedIfEmpty(settings, data);
+        settings.FavoriteComputers.Clear();
+        settings.ComputerGroups.Clear();
+        settings.Subnets.Clear();
+
+        DemoSettingsSeeding.SeedIfEmpty(settings, data);
+
+        Assert.Empty(settings.FavoriteComputers);
+        Assert.Empty(settings.ComputerGroups);
+        Assert.Empty(settings.Subnets);
+    }
+
     private sealed class Progress(List<ScanProgress> list) : IProgress<ScanProgress>
     {
         public void Report(ScanProgress value) => list.Add(value);

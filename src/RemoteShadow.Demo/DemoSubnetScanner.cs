@@ -83,8 +83,12 @@ public static class DemoSettingsSeeding
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(data);
 
+        if (settings.DemoSeeded) return;
+
         var computers = data.GetComputers().OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
         if (computers.Count == 0) return;
+
+        settings.DemoSeeded = true;
 
         // Первый запуск демо: включаем проверку ssh (по умолчанию выключена), чтобы фильтр «SSH» было на чём проверить.
         if (settings.FavoriteComputers.Count == 0 && settings.ComputerGroups.Count == 0 && settings.Subnets.Count == 0)

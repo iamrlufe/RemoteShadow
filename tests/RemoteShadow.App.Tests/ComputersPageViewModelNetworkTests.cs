@@ -234,6 +234,42 @@ public sealed class ComputersPageViewModelNetworkTests
     }
 
     [Fact]
+    public void Adding_the_same_network_twice_is_rejected_even_if_written_differently()
+    {
+        var fixture = new DemoFixture();
+        var vm = CreateViewModel(fixture, fixture.Data.GetComputers());
+        vm.NewSubnetName = "Офис";
+        vm.NewSubnetCidr = "10.80.0.0/24";
+        vm.AddSubnetCommand.Execute(null);
+
+        vm.NewSubnetName = "Офис копия";
+        vm.NewSubnetCidr = "10.80.0.77/24"; // та же сеть 10.80.0.0/24
+        vm.AddSubnetCommand.Execute(null);
+        vm.NewSubnetName = "Другой префикс";
+        vm.NewSubnetCidr = "10.80.0.0/25";
+        vm.AddSubnetCommand.Execute(null);
+
+        Assert.Equal(["10.80.0.0/24", "10.80.0.0/25"], fixture.Settings.Load().Subnets.Select(s => s.Cidr));
+        Assert.Single(fixture.Notifications.ErrorMessages);
+    }
+
+    [Fact]
+    public void Protocol_filter_on_unchecked_computers_explains_the_empty_list()
+    {
+        var fixture = new DemoFixture();
+        var vm = CreateViewModel(fixture, fixture.Data.GetComputers());
+        Assert.Null(vm.EmptyListHint);
+
+        vm.FilterRdp = true; // доступность ещё ни разу не проверялась
+
+        Assert.Empty(vm.Computers);
+        Assert.NotNull(vm.EmptyListHint);
+
+        vm.FilterRdp = false;
+        Assert.Null(vm.EmptyListHint);
+    }
+
+    [Fact]
     public void Adding_a_subnet_validates_cidr()
     {
         var fixture = new DemoFixture();

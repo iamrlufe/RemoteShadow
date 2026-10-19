@@ -288,6 +288,16 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     public bool HasSelectedGroup => SelectedGroup is not null;
 
     /// <summary>«Показано N из M»: видно, что фильтры или группа сузили список.</summary>
+    /// <summary>
+    /// Подсказка, когда список пуст из-за фильтров по протоколам или доступности: они сравнивают только с результатами
+    /// проверки, а после перезапуска проверок ещё нет (доступность не хранится).
+    /// </summary>
+    public string? EmptyListHint =>
+        Computers.Count == 0 && (FilterRdp || FilterSmb || FilterSsh || AvailabilityFilter is AvailabilityFilter.Online or AvailabilityFilter.Offline)
+        && _index.All.Any(c => c.LastCheckedUtc is null)
+            ? "Список пуст: фильтры по доступности и протоколам работают по результатам проверки, а часть компьютеров ещё не проверена. Нажмите «Обновить доступность»."
+            : null;
+
     public string ListSummary => $"Показано {Computers.Count} из {_index.All.Count}";
 
     /// <summary>Снимает выбор группы и возвращает полный список компьютеров (без Ctrl+клика по списку групп).</summary>
@@ -424,6 +434,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         }
 
         OnPropertyChanged(nameof(ListSummary));
+        OnPropertyChanged(nameof(EmptyListHint));
 
         var reselected = selectedId is { } id ? Computers.FirstOrDefault(c => c.Id == id) : null;
         if (!Equals(SelectedComputer, reselected)) SelectedComputer = reselected;
@@ -616,9 +627,17 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             return;
         }
 
-        if (!Cidr.TryParse(NewSubnetCidr, out _, out var error))
+        if (!Cidr.TryParse(NewSubnetCidr, out var newRange, out var error))
         {
             _notifications.Error($"Некорректный CIDR: {error}");
+            return;
+        }
+
+        // 10.0.0.5/24 и 10.0.0.0/24 — одна и та же сеть.
+        var duplicate = Subnets.FirstOrDefault(s => Cidr.TryParse(s.Cidr, out var r, out _) && r.Network == newRange.Network && r.PrefixLength == newRange.PrefixLength);
+        if (duplicate is not null)
+        {
+            _notifications.Error($"Подсеть {newRange.NetworkAddress}/{newRange.PrefixLength} уже есть: «{duplicate.Name}».");
             return;
         }
 

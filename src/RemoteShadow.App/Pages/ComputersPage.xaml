@@ -226,6 +226,9 @@
 
       <TextBlock DockPanel.Dock="Top" Text="{Binding ListSummary}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4" />
 
+      <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyListHint}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
+                 Visibility="{Binding EmptyListHint, Converter={StaticResource NullToVisibilityConverter}}" />
+
       <ListBox ItemsSource="{Binding Computers}"
                SelectedItem="{Binding SelectedComputer, Mode=TwoWay}"
                BorderThickness="0"

@@ -89,5 +89,8 @@ public sealed class AppSettings
 
     public List<SubnetDefinition> Subnets { get; set; } = new();
 
+    /// <summary>Демо-режим уже наполнил настройки примерами: после удаления всего пользователем повторно не наполняет.</summary>
+    public bool DemoSeeded { get; set; }
+
     public ComputersFilterState ComputersFilter { get; set; } = new();
 }
