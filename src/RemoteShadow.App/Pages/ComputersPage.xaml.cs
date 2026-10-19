@@ -39,12 +39,21 @@ public partial class ComputersPage : UserControl, IFilterablePage
     private void OnFiltersExpanded(object sender, RoutedEventArgs e)
     {
         GroupsExpander.IsExpanded = false;
+        DiscoveredExpander.IsExpanded = false;
+        FitPanelsToHeight();
+    }
+
+    private void OnDiscoveredExpanded(object sender, RoutedEventArgs e)
+    {
+        GroupsExpander.IsExpanded = false;
+        FiltersExpander.IsExpanded = false;
         FitPanelsToHeight();
     }
 
     private void OnGroupsExpanded(object sender, RoutedEventArgs e)
     {
         FiltersExpander.IsExpanded = false;
+        DiscoveredExpander.IsExpanded = false;
         FitPanelsToHeight();
     }
 
@@ -68,6 +77,10 @@ public partial class ComputersPage : UserControl, IFilterablePage
         var filtersTop = FiltersExpander.TranslatePoint(new Point(0, 0), this).Y;
         var forFilters = ActualHeight - filtersTop - ExpanderHeaderHeight - ReservedForList;
         FiltersScroll.MaxHeight = Math.Clamp(forFilters, 120, 320);
+
+        var discoveredTop = DiscoveredExpander.TranslatePoint(new Point(0, 0), this).Y;
+        var forDiscovered = ActualHeight - discoveredTop - ExpanderHeaderHeight - ReservedForList;
+        DiscoveredScroll.MaxHeight = Math.Clamp(forDiscovered, 140, 360);
     }
 
     // ----- поиск --------------------------------------------------------------------------------------------------

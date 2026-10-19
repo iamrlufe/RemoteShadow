@@ -320,8 +320,10 @@
       </Expander>
 
 
-      <Expander DockPanel.Dock="Bottom" Header="Найдено сканированием" IsExpanded="False"
+      <Expander x:Name="DiscoveredExpander" DockPanel.Dock="Top" Header="Найдено сканированием" Margin="0,0,0,8" IsExpanded="False"
+                Expanded="OnDiscoveredExpanded"
                 Visibility="{Binding DiscoveredDevices.Count, Converter={StaticResource EmptyToVisibilityConverter}, ConverterParameter=invert}">
+        <ScrollViewer x:Name="DiscoveredScroll" MaxHeight="360" VerticalScrollBarVisibility="Auto">
         <StackPanel>
           <TextBlock Text="{Binding EnrichStatus}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
                      Visibility="{Binding EnrichStatus, Converter={StaticResource NullToVisibilityConverter}}" />
@@ -333,7 +335,7 @@
             <Button Content="Опросить выбранное" Command="{Binding CollectSelectedDeviceCommand}" />
           </StackPanel>
           <ListBox ItemsSource="{Binding DiscoveredDevices}" SelectedItem="{Binding SelectedDiscovered, Mode=TwoWay}"
-                   BorderThickness="0" Background="Transparent" MaxHeight="220"
+                   BorderThickness="0" Background="Transparent" MaxHeight="200"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                    ItemContainerStyle="{StaticResource ListItemStyle}" AutomationProperties.Name="Устройства, найденные сканированием">
             <ListBox.ItemTemplate>
@@ -355,6 +357,7 @@
                    VerticalScrollBarVisibility="Auto" Margin="0,6,0,0" AutomationProperties.Name="Сведения об устройстве"
                    Visibility="{Binding SelectedDiscoveredText, Converter={StaticResource NullToVisibilityConverter}}" />
         </StackPanel>
+        </ScrollViewer>
       </Expander>
 
       <TextBlock DockPanel.Dock="Top" Text="{Binding ListSummary}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4" />
