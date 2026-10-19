@@ -30,6 +30,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.TryAddSingleton<IDnsResolverService, DnsResolverService>();
         services.TryAddSingleton<IReverseDnsResolver, ReverseDnsResolver>();
         services.TryAddSingleton<IComputerAvailabilityService, ComputerAvailabilityService>();
+        services.TryAddSingleton<IOuiDatabase, OuiDatabase>();
+        services.TryAddSingleton<IDeviceFingerprinter, DeviceFingerprinter>();
         services.TryAddSingleton<ISubnetScanner, SubnetScanner>();
         services.TryAddSingleton<IDeviceMergeService, DeviceMergeService>();
 

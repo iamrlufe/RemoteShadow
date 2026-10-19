@@ -7,6 +7,9 @@
     <ProjectReference Include="..\RemoteShadow.Core\RemoteShadow.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="oui.txt.gz" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="RemoteShadow.Infrastructure.Tests" />
   </ItemGroup>
 </Project>

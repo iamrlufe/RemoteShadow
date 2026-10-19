@@ -22,9 +22,12 @@ public sealed class SubnetScanner : ISubnetScanner
     private readonly IIcmpProbe _icmpProbe;
     private readonly IReverseDnsResolver _reverseDns;
     private readonly TimeProvider _time;
+    private readonly IDeviceFingerprinter? _fingerprinter;
 
-    public SubnetScanner(IHostProbe tcpProbe, IIcmpProbe icmpProbe, IReverseDnsResolver reverseDns, TimeProvider time)
+    public SubnetScanner(IHostProbe tcpProbe, IIcmpProbe icmpProbe, IReverseDnsResolver reverseDns, TimeProvider time,
+        IDeviceFingerprinter? fingerprinter = null)
     {
+        _fingerprinter = fingerprinter;
         _tcpProbe = tcpProbe ?? throw new ArgumentNullException(nameof(tcpProbe));
         _icmpProbe = icmpProbe ?? throw new ArgumentNullException(nameof(icmpProbe));
         _reverseDns = reverseDns ?? throw new ArgumentNullException(nameof(reverseDns));
@@ -142,6 +145,23 @@ public sealed class SubnetScanner : ISubnetScanner
                 reverseDns = null; // Сбой обратного DNS не отменяет находку и не роняет весь скан.
             }
 
+            DeviceFingerprint? fp = null;
+            if (_fingerprinter is not null)
+            {
+                try
+                {
+                    fp = await _fingerprinter.ProbeAsync(ip, timeout, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch
+                {
+                    fp = null; // Опознание — дополнение: сбой не отменяет находку.
+                }
+            }
+
             markProbed();
             var now = _time.GetUtcNow().UtcDateTime;
             results.Enqueue(new DiscoveredDevice
@@ -150,6 +170,13 @@ public sealed class SubnetScanner : ISubnetScanner
                 SubnetId = subnet.Id,
                 IpAddress = ip,
                 ReverseDnsName = reverseDns,
+                Hostname = reverseDns ?? fp?.Hostname,
+                NameSource = reverseDns is not null ? "DNS" : fp?.NameSource,
+                Workgroup = fp?.Workgroup,
+                Mac = fp?.Mac,
+                Vendor = fp?.Vendor,
+                DeviceKind = fp?.DeviceKind,
+                Banner = fp?.Banner,
                 FirstSeenUtc = now,
                 LastSeenUtc = now,
                 FoundInLastScan = true,
@@ -209,9 +236,10 @@ public sealed class DeviceMergeService : IDeviceMergeService
         ArgumentNullException.ThrowIfNull(device);
         ArgumentNullException.ThrowIfNull(adComputers);
 
-        if (string.IsNullOrWhiteSpace(device.ReverseDnsName)) return null;
+        var name = !string.IsNullOrWhiteSpace(device.ReverseDnsName) ? device.ReverseDnsName : device.Hostname;
+        if (string.IsNullOrWhiteSpace(name)) return null;
 
-        var shortName = ShortName(device.ReverseDnsName);
+        var shortName = ShortName(name);
         if (shortName.Length == 0) return null;
 
         ComputerInfo? match = null;

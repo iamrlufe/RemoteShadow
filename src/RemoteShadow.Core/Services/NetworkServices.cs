@@ -76,3 +76,36 @@ public interface IDeviceMergeService
     /// </summary>
     Guid? Match(DiscoveredDevice device, IReadOnlyList<ComputerInfo> adComputers);
 }
+
+
+/// <summary>Результат опознания устройства по сети без учётных данных.</summary>
+public sealed record DeviceFingerprint
+{
+    public string? Hostname { get; init; }
+    public string? NameSource { get; init; }
+    public string? Workgroup { get; init; }
+    public string? Mac { get; init; }
+    public string? Vendor { get; init; }
+    public string? DeviceKind { get; init; }
+    public string? Banner { get; init; }
+}
+
+/// <summary>Опознаёт устройство без учётных данных: имя (NetBIOS), MAC, производитель, тип, баннеры служб.</summary>
+public interface IDeviceFingerprinter
+{
+    /// <summary>Никогда не бросает исключений, кроме отмены: недоступные источники просто не дают данных.</summary>
+    Task<DeviceFingerprint> ProbeAsync(string ipAddress, TimeSpan timeout, CancellationToken ct);
+}
+
+/// <summary>База производителей по OUI (первые 3 байта MAC).</summary>
+public interface IOuiDatabase
+{
+    /// <summary>Принимает MAC в любом распространённом формате; null — производитель неизвестен.</summary>
+    string? Lookup(string mac);
+}
+
+/// <summary>MAC по IP из ARP: работает только в своей L2-сети, через маршрутизатор MAC не виден.</summary>
+public interface IArpResolver
+{
+    string? TryGetMac(string ipAddress);
+}

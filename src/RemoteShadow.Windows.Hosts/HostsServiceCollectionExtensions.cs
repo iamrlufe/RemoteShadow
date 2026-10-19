@@ -16,6 +16,7 @@ public static class HostsServiceCollectionExtensions
         services.AddSingleton<ISessionService, WtsSessionService>();
         services.AddSingleton<IHostProbe, TcpHostProbe>();
         services.AddSingleton<IIcmpProbe, IcmpHostProbe>();
+        services.AddSingleton<IArpResolver, ArpResolver>();
         services.AddSingleton<IDiagnosticsService, CimDiagnosticsService>();
         return services;
     }

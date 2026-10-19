@@ -66,6 +66,44 @@ public sealed record DiscoveredDevice
 
     /// <summary>Отвечал ли ICMP/TCP (для построения <see cref="FoundInLastScan"/> на верхнем уровне).</summary>
     public bool IsOnline { get; init; }
+
+    /// <summary>Лучшее известное имя устройства: PTR, иначе NetBIOS и т. п. null — имя установить не удалось.</summary>
+    public string? Hostname { get; init; }
+
+    /// <summary>Откуда взято <see cref="Hostname"/>: «DNS», «NetBIOS», «WMI».</summary>
+    public string? NameSource { get; init; }
+
+    /// <summary>Рабочая группа или домен (NetBIOS/WMI).</summary>
+    public string? Workgroup { get; init; }
+
+    /// <summary>MAC-адрес, формат AA:BB:CC:DD:EE:FF. Известен в своей L2-сети (ARP) или из NetBIOS/WMI.</summary>
+    public string? Mac { get; init; }
+
+    /// <summary>Производитель сетевой карты по OUI (первые 3 байта MAC).</summary>
+    public string? Vendor { get; init; }
+
+    /// <summary>Тип: «Windows», «Принтер», «Камера», «Сетевое оборудование», «Linux/Unix» или null.</summary>
+    public string? DeviceKind { get; init; }
+
+    /// <summary>Строка-баннер службы (SSH-версия, заголовок веб-страницы) для опознания устройств без имени.</summary>
+    public string? Banner { get; init; }
+
+    public string? OsName { get; init; }
+    public string? OsVersion { get; init; }
+
+    /// <summary>Производитель и модель оборудования (WMI Win32_ComputerSystem).</summary>
+    public string? Manufacturer { get; init; }
+    public string? Model { get; init; }
+    public string? SerialNumber { get; init; }
+
+    /// <summary>Остальные сведения (процессор, память, диски, пользователь, время загрузки) в виде «название — значение».</summary>
+    public IReadOnlyDictionary<string, string>? Details { get; init; }
+
+    /// <summary>Когда собраны сведения по WinRM/WMI; null — не собирались.</summary>
+    public DateTime? EnrichedUtc { get; init; }
+
+    /// <summary>Почему сведения по WinRM/WMI не собраны («WinRM закрыт», «нет прав»); null — собраны или не пробовали.</summary>
+    public string? EnrichError { get; init; }
 }
 
 /// <summary>Фильтр по статусу доступности в разделе «Компьютеры».</summary>
