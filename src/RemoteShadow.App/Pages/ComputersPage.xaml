@@ -54,8 +54,10 @@
       <!-- Дерево: доступность / избранное / группы / подсети -->
       <Expander x:Name="GroupsExpander" DockPanel.Dock="Top" Header="Группы и подсети" Margin="0,0,0,8" IsExpanded="False"
                 Expanded="OnGroupsExpanded">
-        <!-- Без прокрутки раскрытая панель занимает всю высоту и сжимает список компьютеров до нуля -->
-        <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+        <!-- Без прокрутки раскрытая панель занимает всю высоту и сжимает список компьютеров до нуля.
+             280 — достаточно, чтобы список групп, форма добавления группы и начало списка подсетей были видны
+             без прокрутки на обычном окне; дальше (подсети/сканирование) — через ползунок этого ScrollViewer. -->
+        <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,8,8,0">
           <TextBlock Text="Мои группы" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,2" />
           <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup, Mode=TwoWay}"
@@ -75,10 +77,10 @@
                     <ColumnDefinition Width="Auto" />
                   </Grid.ColumnDefinitions>
                   <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                  <Button Grid.Column="1" Content="✎" ToolTip="Переименовать"
+                  <Button Grid.Column="1" Content="&#xE70F;" ToolTip="Переименовать"
                           Command="{Binding DataContext.RenameGroupCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                           CommandParameter="{Binding}" Style="{StaticResource IconButtonStyle}" Width="24" Height="24" />
-                  <Button Grid.Column="2" Content="✕" ToolTip="Удалить группу (компьютер в AD не удаляется)"
+                  <Button Grid.Column="2" Content="&#xE711;" ToolTip="Удалить группу (компьютер в AD не удаляется)"
                           Command="{Binding DataContext.DeleteGroupCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                           CommandParameter="{Binding}" Style="{StaticResource IconButtonStyle}" Width="24" Height="24" />
                 </Grid>
@@ -133,7 +135,7 @@
                   <Button Grid.Column="1" Content="Сканировать"
                           Command="{Binding DataContext.ScanSubnetCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                           CommandParameter="{Binding}" Margin="4,0" />
-                  <Button Grid.Column="2" Content="✕" ToolTip="Удалить подсеть"
+                  <Button Grid.Column="2" Content="&#xE711;" ToolTip="Удалить подсеть"
                           Command="{Binding DataContext.DeleteSubnetCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                           CommandParameter="{Binding}" Style="{StaticResource IconButtonStyle}" Width="24" Height="24" />
                 </Grid>
@@ -175,10 +177,12 @@
                    Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
       </Grid>
 
-      <!-- Фильтры: свёрнуты по умолчанию, раскрытая панель прокручивается и не вытесняет список -->
+      <!-- Фильтры: свёрнуты по умолчанию, раскрытая панель прокручивается и не вытесняет список.
+           320 показывает все фильтры (включая чекбоксы RDP/SMB/SSH и «Показывать отключённые») и сортировку
+           без внутренней прокрутки на обычном окне — раньше 150px обрезали их ниже видимой области. -->
       <Expander x:Name="FiltersExpander" DockPanel.Dock="Top" Header="Фильтры и сортировка" Margin="0,0,0,8" IsExpanded="False"
                 Expanded="OnFiltersExpanded">
-        <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="0,8,8,0">
             <TextBlock Text="Доступность" Style="{StaticResource CaptionMutedTextStyle}" />
             <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding AvailabilityFilterValues}" SelectedItem="{Binding AvailabilityFilter}" AutomationProperties.Name="Фильтр по доступности" Margin="0,2,0,8" />
@@ -256,7 +260,7 @@
       <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyListHint}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
                  Visibility="{Binding EmptyListHint, Converter={StaticResource NullToVisibilityConverter}}" />
 
-      <ListBox ItemsSource="{Binding Computers}" MinHeight="120"
+      <ListBox ItemsSource="{Binding Computers}" MinHeight="90"
                SelectedItem="{Binding SelectedComputer, Mode=TwoWay}"
                BorderThickness="0"
                Background="Transparent"

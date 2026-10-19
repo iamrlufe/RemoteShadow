@@ -297,6 +297,121 @@
     </Setter>
   </Style>
 
+  <!-- ===== Флажки и переключатели =====
+       Без явного шаблона системный Fluent-стиль рисует рамку CheckBox почти незаметным светло-серым
+       контуром 1px на светлом фоне — пользователи не видят, что это кликабельный флажок, пока не наведут
+       мышь. Здесь рамка контрастнее (TextFillColorSecondaryBrush, 1.4px) и толще при фокусе с клавиатуры;
+       применяется неявно (без x:Key) ко всем CheckBox/RadioButton в приложении, включая диалоги и вход. -->
+
+  <Style TargetType="CheckBox">
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Padding" Value="8,0,0,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="CheckBox">
+          <StackPanel Orientation="Horizontal" Background="Transparent" SnapsToDevicePixels="True">
+            <Border x:Name="Box"
+                    Width="18" Height="18"
+                    CornerRadius="3"
+                    BorderThickness="1.4"
+                    BorderBrush="{DynamicResource TextFillColorSecondaryBrush}"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    VerticalAlignment="Center">
+              <TextBlock x:Name="CheckGlyph"
+                         Style="{StaticResource IconTextStyle}"
+                         FontSize="12"
+                         Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                         Text="&#xE73E;"
+                         Opacity="0" />
+            </Border>
+            <ContentPresenter Margin="{TemplateBinding Padding}"
+                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                               RecognizesAccessKey="True" />
+          </StackPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+              <Setter TargetName="CheckGlyph" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="{x:Null}">
+              <Setter TargetName="Box" Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+              <Setter TargetName="CheckGlyph" Property="Text" Value="&#xE73C;" />
+              <Setter TargetName="CheckGlyph" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Box" Property="Opacity" Value="0.85" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+              <Setter TargetName="Box" Property="BorderThickness" Value="2" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+              <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource TextFillColorDisabledBrush}" />
+              <Setter TargetName="Box" Property="Opacity" Value="0.6" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="RadioButton">
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Padding" Value="8,0,0,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <StackPanel Orientation="Horizontal" Background="Transparent" SnapsToDevicePixels="True">
+            <Grid Width="18" Height="18" VerticalAlignment="Center">
+              <Ellipse x:Name="Outer"
+                       Stroke="{DynamicResource TextFillColorSecondaryBrush}"
+                       StrokeThickness="1.4"
+                       Fill="{DynamicResource ControlFillColorDefaultBrush}" />
+              <Ellipse x:Name="Dot" Width="8" Height="8" Fill="{DynamicResource AccentFillColorDefaultBrush}" Opacity="0" />
+            </Grid>
+            <ContentPresenter Margin="{TemplateBinding Padding}"
+                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                               RecognizesAccessKey="True" />
+          </StackPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Outer" Property="Stroke" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Outer" Property="Stroke" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+              <Setter TargetName="Dot" Property="Opacity" Value="1" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Dot" Property="Opacity" Value="0.85" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Outer" Property="StrokeThickness" Value="2.2" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+              <Setter TargetName="Outer" Property="Stroke" Value="{DynamicResource TextFillColorDisabledBrush}" />
+              <Setter TargetName="Dot" Property="Fill" Value="{DynamicResource TextFillColorDisabledBrush}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- ===== Списки ===== -->
 
   <Style x:Key="ListItemStyle" TargetType="ListBoxItem">
