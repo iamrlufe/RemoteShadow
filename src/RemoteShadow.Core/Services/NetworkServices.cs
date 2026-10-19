@@ -109,3 +109,26 @@ public interface IArpResolver
 {
     string? TryGetMac(string ipAddress);
 }
+
+/// <summary>Сведения об устройстве, полученные по WinRM/WMI под учётной записью подключения.</summary>
+public sealed record DeviceInventory
+{
+    public string? Hostname { get; init; }
+    public string? Domain { get; init; }
+    public string? OsName { get; init; }
+    public string? OsVersion { get; init; }
+    public string? Manufacturer { get; init; }
+    public string? Model { get; init; }
+    public string? SerialNumber { get; init; }
+    public string? Mac { get; init; }
+    public IReadOnlyDictionary<string, string> Details { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>Причина, по которой сведения не получены («WinRM закрыт», «нет прав»); null — получены.</summary>
+    public string? Error { get; init; }
+}
+
+/// <summary>Собирает полные сведения об устройстве по WinRM/WMI. Не бросает исключений, кроме отмены.</summary>
+public interface IDeviceInventoryService
+{
+    Task<DeviceInventory> CollectAsync(string host, CancellationToken ct);
+}

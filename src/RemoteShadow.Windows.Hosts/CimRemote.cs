@@ -247,6 +247,31 @@ internal sealed class CimRemote : ICimRemote
         return enabled;
     }
 
+    /// <summary>Строки WQL-запроса в root\cimv2 как словари «свойство — значение». Только простые значения и массивы.</summary>
+    public IReadOnlyList<IReadOnlyDictionary<string, object?>> QueryRows(string wql)
+    {
+        try
+        {
+            using var options = NewOptions();
+            var rows = new List<IReadOnlyDictionary<string, object?>>();
+            foreach (var instance in _session.QueryInstances(Cimv2, "WQL", wql, options))
+            {
+                using (instance)
+                {
+                    var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var property in instance.CimInstanceProperties) row[property.Name] = property.Value;
+                    rows.Add(row);
+                }
+            }
+
+            return rows;
+        }
+        catch (CimException ex)
+        {
+            throw Translate(ex);
+        }
+    }
+
     private static CimOperationOptions NewOptions() => new() { Timeout = OperationTimeout };
 
     private static CimRemoteException Translate(CimException ex)

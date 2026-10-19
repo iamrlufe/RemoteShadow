@@ -18,6 +18,7 @@ public static class HostsServiceCollectionExtensions
         services.AddSingleton<IIcmpProbe, IcmpHostProbe>();
         services.AddSingleton<IArpResolver, ArpResolver>();
         services.AddSingleton<IDiagnosticsService, CimDiagnosticsService>();
+        services.AddSingleton<IDeviceInventoryService, CimInventoryService>();
         return services;
     }
 }
