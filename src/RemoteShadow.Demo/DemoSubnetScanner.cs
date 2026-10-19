@@ -86,6 +86,10 @@ public static class DemoSettingsSeeding
         var computers = data.GetComputers().OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
         if (computers.Count == 0) return;
 
+        // Первый запуск демо: включаем проверку ssh (по умолчанию выключена), чтобы фильтр «SSH» было на чём проверить.
+        if (settings.FavoriteComputers.Count == 0 && settings.ComputerGroups.Count == 0 && settings.Subnets.Count == 0)
+            settings.CheckSsh = true;
+
         if (settings.FavoriteComputers.Count == 0)
         {
             settings.FavoriteComputers.AddRange(computers.Take(3).Select(c => c.Id));

@@ -24,10 +24,12 @@ public sealed class ComputerAvailabilityService : IComputerAvailabilityService
     private readonly IIcmpProbe _icmpProbe;
     private readonly ISettingsStore _settings;
     private readonly TimeProvider _time;
+    private readonly IDnsResolverService? _dns;
     private readonly ConcurrentDictionary<Guid, DateTime> _checkedAt = new();
 
-    public ComputerAvailabilityService(IComputerIndex index, IHostProbe tcpProbe, IIcmpProbe icmpProbe, ISettingsStore settings, TimeProvider time)
+    public ComputerAvailabilityService(IComputerIndex index, IHostProbe tcpProbe, IIcmpProbe icmpProbe, ISettingsStore settings, TimeProvider time, IDnsResolverService? dns = null)
     {
+        _dns = dns;
         _index = index ?? throw new ArgumentNullException(nameof(index));
         _tcpProbe = tcpProbe ?? throw new ArgumentNullException(nameof(tcpProbe));
         _icmpProbe = icmpProbe ?? throw new ArgumentNullException(nameof(icmpProbe));
@@ -94,6 +96,7 @@ public sealed class ComputerAvailabilityService : IComputerAvailabilityService
             _index.SetAvailability(computer.Id, isChecking: true);
 
             bool? rdp = null, smb = null, ssh = null, icmp = null;
+            IReadOnlyList<string>? addresses = null;
             try
             {
                 if (!HostNameValidator.IsValid(computer.HostName))
@@ -109,13 +112,20 @@ public sealed class ComputerAvailabilityService : IComputerAvailabilityService
                     var sshTask = protocols.CheckSsh ? SafeProbeAsync(() => _tcpProbe.IsPortOpenAsync(host, protocols.SshPort, timeout, ct), ct) : null;
                     var icmpTask = protocols.CheckIcmp ? SafeProbeAsync(() => _icmpProbe.PingAsync(host, timeout, ct), ct) : null;
 
+                    // IP нужны фильтру и сортировке по IP; сбой DNS не влияет на результат проверки протоколов.
+                    var dnsTask = _dns is null ? null : SafeResolveAsync(_dns, host, ct);
+
                     var pending = new List<Task>();
                     if (rdpTask is not null) pending.Add(rdpTask);
                     if (smbTask is not null) pending.Add(smbTask);
                     if (sshTask is not null) pending.Add(sshTask);
                     if (icmpTask is not null) pending.Add(icmpTask);
 
+                    if (dnsTask is not null) pending.Add(dnsTask);
+
                     if (pending.Count > 0) await Task.WhenAll(pending).ConfigureAwait(false);
+
+                    if (dnsTask is not null) addresses = await dnsTask.ConfigureAwait(false);
 
                     if (rdpTask is not null) rdp = await rdpTask.ConfigureAwait(false);
                     if (smbTask is not null) smb = await smbTask.ConfigureAwait(false);
@@ -128,11 +138,29 @@ public sealed class ComputerAvailabilityService : IComputerAvailabilityService
                 return;
             }
 
+            if (addresses is { Count: > 0 }) _index.SetIpAddresses(computer.Id, addresses);
+
             var online = rdp == true || smb == true || ssh == true || icmp == true;
             var checkedAtUtc = _time.GetUtcNow().UtcDateTime;
             _checkedAt[computer.Id] = checkedAtUtc;
 
             _index.SetAvailability(computer.Id, isChecking: false, online: online, rdp: rdp, smb: smb, ssh: ssh, icmp: icmp, checkedAtUtc: checkedAtUtc);
+        }
+    }
+
+    private static async Task<IReadOnlyList<string>> SafeResolveAsync(IDnsResolverService dns, string host, CancellationToken ct)
+    {
+        try
+        {
+            return await dns.ResolveAsync(host, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return Array.Empty<string>();
         }
     }
 

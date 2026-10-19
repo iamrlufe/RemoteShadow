@@ -248,4 +248,37 @@ public class ComputerAvailabilityServiceTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => refresh.WithTimeout());
     }
+
+    private sealed class FakeDns(Func<string, IReadOnlyList<string>> resolve) : RemoteShadow.Core.Services.IDnsResolverService
+    {
+        public Task<IReadOnlyList<string>> ResolveAsync(string host, CancellationToken ct) => Task.FromResult(resolve(host));
+    }
+
+    [Fact]
+    public async Task Resolved_ip_addresses_are_stored_in_the_index()
+    {
+        var fx = new Fixture();
+        var pcs = fx.AddComputers(2);
+        var service = new ComputerAvailabilityService(fx.Index, fx.Tcp, fx.Icmp, fx.Settings, fx.Time,
+            new FakeDns(host => host.Contains("001", StringComparison.Ordinal) ? ["10.1.2.3"] : []));
+
+        await service.RefreshAsync(pcs, true, CancellationToken.None);
+
+        Assert.Equal(["10.1.2.3"], fx.StateOf(pcs[0])!.IpAddresses);
+        Assert.Null(fx.StateOf(pcs[1])!.IpAddresses); // имя не разрешилось — адресов нет, это не ошибка проверки
+    }
+
+    [Fact]
+    public async Task Dns_failure_does_not_break_the_availability_check()
+    {
+        var fx = new Fixture();
+        var pcs = fx.AddComputers(1);
+        fx.Tcp.Online = _ => true;
+        var service = new ComputerAvailabilityService(fx.Index, fx.Tcp, fx.Icmp, fx.Settings, fx.Time,
+            new FakeDns(_ => throw new InvalidOperationException("dns down")));
+
+        await service.RefreshAsync(pcs, true, CancellationToken.None);
+
+        Assert.True(fx.StateOf(pcs[0])!.IsOnline);
+    }
 }

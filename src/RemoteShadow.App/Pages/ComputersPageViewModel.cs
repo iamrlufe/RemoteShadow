@@ -161,6 +161,13 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     [ObservableProperty]
     private ComputerGroup? _selectedGroup;
 
+    /// <summary>
+    /// Группа для «+ в группу» / «− из группы». Отдельна от <see cref="SelectedGroup"/> (фильтра списка): выбор фильтра
+    /// скрывал бы только что выбранный компьютер, и добавить его в пустую группу было бы нельзя.
+    /// </summary>
+    [ObservableProperty]
+    private ComputerGroup? _membershipGroup;
+
     [ObservableProperty]
     private string _newGroupName = string.Empty;
 
@@ -271,7 +278,21 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
     partial void OnNoConsentChanged(bool value) => RebuildSessionButtons();
 
-    partial void OnSelectedGroupChanged(ComputerGroup? value) => RefreshComputers();
+    partial void OnSelectedGroupChanged(ComputerGroup? value)
+    {
+        OnPropertyChanged(nameof(HasSelectedGroup));
+        RefreshComputers();
+    }
+
+    /// <summary>Выбранная группа сужает список компьютеров: по этому признаку показывается плашка «Показать все».</summary>
+    public bool HasSelectedGroup => SelectedGroup is not null;
+
+    /// <summary>«Показано N из M»: видно, что фильтры или группа сузили список.</summary>
+    public string ListSummary => $"Показано {Computers.Count} из {_index.All.Count}";
+
+    /// <summary>Снимает выбор группы и возвращает полный список компьютеров (без Ctrl+клика по списку групп).</summary>
+    [RelayCommand]
+    private void ClearGroupFilter() => SelectedGroup = null;
 
     private void SelectComputer(Guid id, int? sessionId)
     {
@@ -402,6 +423,8 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             _rebuildingList = false;
         }
 
+        OnPropertyChanged(nameof(ListSummary));
+
         var reselected = selectedId is { } id ? Computers.FirstOrDefault(c => c.Id == id) : null;
         if (!Equals(SelectedComputer, reselected)) SelectedComputer = reselected;
         else if (reselected is null && _trackedComputerId is not null) OnSelectedComputerChanged(null);
@@ -462,8 +485,14 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     private void ReloadGroupsAndSubnets()
     {
         var settings = _settingsStore.Load();
+        var selectedGroupId = SelectedGroup?.Id;
+        var membershipGroupId = MembershipGroup?.Id;
         Groups.Clear();
         foreach (var group in settings.ComputerGroups) Groups.Add(group);
+
+        // Очистка коллекции сбрасывает выбор в списке и в ComboBox: возвращаем его по Id.
+        if (selectedGroupId is { } sid) SelectedGroup = Groups.FirstOrDefault(g => g.Id == sid);
+        if (membershipGroupId is { } mid) MembershipGroup = Groups.FirstOrDefault(g => g.Id == mid);
 
         Subnets.Clear();
         foreach (var subnet in settings.Subnets) Subnets.Add(subnet);
@@ -495,6 +524,12 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             return;
         }
 
+        if (Groups.Any(g => string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            _notifications.Error($"Группа «{name}» уже существует.");
+            return;
+        }
+
         var settings = _settingsStore.Load();
         var group = new ComputerGroup { Name = name };
         settings.ComputerGroups.Add(group);
@@ -515,6 +550,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
         Groups.Remove(group);
         if (ReferenceEquals(SelectedGroup, group)) SelectedGroup = null;
+        if (ReferenceEquals(MembershipGroup, group)) MembershipGroup = null;
         RefreshComputers();
     }
 
@@ -654,11 +690,13 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
             // Без UiThread.Post: продолжение после await в реальном приложении и так возвращается в поток интерфейса
             // (WPF SynchronizationContext), а в тестах без него выполняется тут же — обновление видно сразу в обоих случаях.
+            var seenThisScan = new HashSet<string>();
             await foreach (var device in _scanner.ScanAsync(subnet, progress, cts.Token).WithCancellation(cts.Token))
             {
                 var matchedId = _deviceMerge.Match(device, _index.All);
                 var merged = device with { MatchedComputerId = matchedId };
 
+                seenThisScan.Add(merged.Key);
                 _discoveredByKey[merged.Key] = merged; // обновляем существующую запись по ключу — без дублей при повторном скане
 
                 var existingIndex = IndexOfDiscovered(merged.Key);
@@ -667,7 +705,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             }
 
             // Устройства из истории этой подсети, не найденные в этот раз, помечаются как «не найдены», но не удаляются.
-            var foundKeysThisScan = _discoveredByKey.Values.Where(d => d.SubnetId == subnet.Id && d.FoundInLastScan).Select(d => d.Key).ToHashSet();
+            var foundKeysThisScan = seenThisScan;
             foreach (var key in _discoveredByKey.Keys.ToList())
             {
                 var existing = _discoveredByKey[key];

@@ -133,6 +133,107 @@ public sealed class ComputersPageViewModelNetworkTests
     }
 
     [Fact]
+    public void Clearing_group_filter_restores_the_full_computer_list()
+    {
+        var fixture = new DemoFixture();
+        var all = fixture.Data.GetComputers().ToList();
+        var vm = CreateViewModel(fixture, all);
+        vm.SelectedComputer = vm.Computers.First();
+        vm.NewGroupName = "Only-this-one";
+        vm.CreateGroupCommand.Execute(null);
+        vm.AddSelectedComputerToGroupCommand.Execute(vm.Groups[0]);
+        vm.SelectedGroup = vm.Groups[0];
+        Assert.True(vm.HasSelectedGroup);
+        Assert.Single(vm.Computers);
+        Assert.Equal($"Показано 1 из {all.Count}", vm.ListSummary);
+
+        vm.ClearGroupFilterCommand.Execute(null);
+
+        Assert.Null(vm.SelectedGroup);
+        Assert.False(vm.HasSelectedGroup);
+        Assert.True(vm.Computers.Count > 1);
+        Assert.Equal($"Показано {vm.Computers.Count} из {all.Count}", vm.ListSummary);
+        Assert.Contains(vm.Groups, g => g.Name == "Only-this-one"); // группа сама не удаляется
+    }
+
+    [Fact]
+    public void Creating_a_group_with_an_existing_name_is_rejected()
+    {
+        var fixture = new DemoFixture();
+        var vm = CreateViewModel(fixture, fixture.Data.GetComputers());
+        vm.NewGroupName = "Бухгалтерия";
+        vm.CreateGroupCommand.Execute(null);
+
+        vm.NewGroupName = "бухгалтерия ";
+        vm.CreateGroupCommand.Execute(null);
+
+        Assert.Single(vm.Groups);
+        Assert.Single(fixture.Settings.Load().ComputerGroups);
+        Assert.Single(fixture.Notifications.ErrorMessages);
+    }
+
+    [Fact]
+    public async Task Rescan_marks_devices_missing_from_the_latest_scan_as_not_found()
+    {
+        var fixture = new DemoFixture();
+        var scanner = new SequenceScanner();
+        var vm = new ComputersPageViewModel(new FakeComputerIndex(fixture.Data.GetComputers()), fixture.Sessions, fixture.Runner,
+            fixture.Notifications, fixture.Settings, fixture.Availability, scanner, fixture.DeviceMerge, fixture.Dialogs);
+        vm.NewSubnetName = "Тест";
+        vm.NewSubnetCidr = "10.60.0.0/24";
+        vm.AddSubnetCommand.Execute(null);
+        var subnet = vm.Subnets[0];
+        scanner.Next = ["10.60.0.1", "10.60.0.2"];
+        await vm.ScanSubnetCommand.ExecuteAsync(subnet);
+        Assert.All(vm.DiscoveredDevices, d => Assert.True(d.FoundInLastScan));
+
+        scanner.Next = ["10.60.0.1"];
+        await vm.ScanSubnetCommand.ExecuteAsync(subnet);
+
+        Assert.Equal(2, vm.DiscoveredDevices.Count);
+        Assert.True(vm.DiscoveredDevices.Single(d => d.IpAddress == "10.60.0.1").FoundInLastScan);
+        Assert.False(vm.DiscoveredDevices.Single(d => d.IpAddress == "10.60.0.2").FoundInLastScan);
+    }
+
+    private sealed class SequenceScanner : RemoteShadow.Core.Services.ISubnetScanner
+    {
+        public string[] Next { get; set; } = [];
+
+        public async IAsyncEnumerable<DiscoveredDevice> ScanAsync(
+            SubnetDefinition subnet, IProgress<RemoteShadow.Core.Services.ScanProgress>? progress,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        {
+            foreach (var ip in Next)
+            {
+                await Task.Yield();
+                yield return new DiscoveredDevice { Key = ip, SubnetId = subnet.Id, IpAddress = ip, FoundInLastScan = true, IsOnline = true };
+            }
+        }
+    }
+
+    [Fact]
+    public void Computer_can_be_added_to_an_empty_group_without_using_it_as_the_list_filter()
+    {
+        var fixture = new DemoFixture();
+        var vm = CreateViewModel(fixture, fixture.Data.GetComputers());
+        vm.NewGroupName = "Пустая";
+        vm.CreateGroupCommand.Execute(null);
+        var computer = vm.Computers.First();
+        vm.SelectedComputer = computer;
+        vm.MembershipGroup = vm.Groups[0];
+
+        vm.AddSelectedComputerToGroupCommand.Execute(vm.MembershipGroup);
+
+        Assert.Null(vm.SelectedGroup);
+        Assert.Same(computer, vm.SelectedComputer); // список не сузился, выбор не потерян
+        Assert.Contains(computer.Id, fixture.Settings.Load().ComputerGroups[0].ComputerIds);
+
+        vm.RemoveComputerFromGroupCommand.Execute(vm.MembershipGroup);
+
+        Assert.Empty(fixture.Settings.Load().ComputerGroups[0].ComputerIds);
+    }
+
+    [Fact]
     public void Adding_a_subnet_validates_cidr()
     {
         var fixture = new DemoFixture();

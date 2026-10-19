@@ -172,14 +172,14 @@ public class ComputersFilterTests
     }
 
     [Fact]
-    public void Sort_by_ip_address_orders_by_first_address_as_text()
+    public void Sort_by_ip_address_orders_numerically_and_puts_computers_without_ip_last()
     {
         var computers = new[] { Make("A", ip: "10.0.0.20"), Make("B", ip: "10.0.0.5"), Make("C", ip: null) };
         var filter = new ComputersFilterState { SortBy = ComputersSortBy.IpAddress };
 
         var sorted = ComputersFilter.Sort(computers, filter).Select(c => c.Name).ToList();
 
-        Assert.Equal(new[] { "C", "A", "B" }, sorted); // текстовая сортировка: "" < "10.0.0.20" < "10.0.0.5"
+        Assert.Equal(new[] { "B", "A", "C" }, sorted); // 10.0.0.5 < 10.0.0.20, без адреса — в конце
     }
 
     [Fact]

@@ -62,7 +62,7 @@ public static class ComputersFilter
         IOrderedEnumerable<ComputerInfo> ordered = filter.SortBy switch
         {
             ComputersSortBy.Name => computers.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase),
-            ComputersSortBy.IpAddress => computers.OrderBy(c => c.IpAddresses?.FirstOrDefault() ?? string.Empty, StringComparer.OrdinalIgnoreCase),
+            ComputersSortBy.IpAddress => computers.OrderBy(c => IpSortKey(c.IpAddresses?.FirstOrDefault())),
             ComputersSortBy.LastChecked => computers.OrderBy(c => c.LastCheckedUtc ?? DateTime.MinValue),
             _ => computers.OrderBy(AvailabilityRank),
         };
@@ -73,6 +73,16 @@ public static class ComputersFilter
             : ordered.ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase);
 
         return filter.SortDescending ? withTieBreak.Reverse() : withTieBreak;
+    }
+
+    /// <summary>Числовой ключ IPv4 (10.50.0.9 раньше 10.50.0.100); без адреса или не IPv4 — в конец.</summary>
+    private static long IpSortKey(string? address)
+    {
+        if (!System.Net.IPAddress.TryParse(address, out var ip) || ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+            return long.MaxValue;
+
+        var bytes = ip.GetAddressBytes();
+        return ((long)bytes[0] << 24) | ((long)bytes[1] << 16) | ((long)bytes[2] << 8) | bytes[3];
     }
 
     /// <summary>Доступные компьютеры наверх по умолчанию: Online &lt; Checking &lt; Unknown &lt; Offline.</summary>
