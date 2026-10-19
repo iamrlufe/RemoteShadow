@@ -161,14 +161,8 @@
         </Grid.ColumnDefinitions>
 
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <Border Width="32" Height="32" CornerRadius="8" Margin="0,0,10,0"
-                  Background="{DynamicResource AccentFillColorDefaultBrush}">
-            <TextBlock Text="&#xE7B3;"
-                       Style="{StaticResource IconTextStyle}"
-                       FontSize="17"
-                       HorizontalAlignment="Center"
-                       Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
-          </Border>
+          <Image Source="/Resources/app.ico" Width="32" Height="32" Margin="0,0,10,0"
+                 RenderOptions.BitmapScalingMode="HighQuality" />
           <TextBlock Text="RemoteShadow"
                      FontSize="16"
                      FontWeight="SemiBold"

@@ -53,6 +53,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Значок приложения во всех окнах (заголовок, Alt+Tab): у окон без явного Icon он иначе общий системный.
+        EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler(static (sender, _) =>
+        {
+            if (sender is Window { Icon: null } window && AppIcon.Image is { } icon) window.Icon = icon;
+        }));
+
         try
         {
             await StartAsync(e.Args);
