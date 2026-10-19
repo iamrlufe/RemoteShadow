@@ -200,6 +200,17 @@ public sealed class ProtocolAvailabilityTextConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>bool (избранное выбранного компьютера) → подпись кнопки-переключателя.</summary>
+[ValueConversion(typeof(bool), typeof(string))]
+public sealed class FavoriteButtonTextConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true ? "★ Убрать из избранного" : "☆ В избранное";
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Кисти и стили по <see cref="StatusTone"/>: из ресурсов приложения, а если их нет — запасные цвета.</summary>
 internal static class ToneResources
 {

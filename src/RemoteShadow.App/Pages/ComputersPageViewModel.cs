@@ -46,6 +46,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     private int? _pendingSessionId;
     private bool _disposed;
     private bool _loadingFilterFromSettings;
+    private bool _rebuildingList;
 
     public ComputersPageViewModel(
         IComputerIndex index,
@@ -192,9 +193,15 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     /// <summary>Порог, с которого сканирование требует подтверждения (слишком большой диапазон адресов).</summary>
     public const long LargeScanWarningThreshold = 1024;
 
+    /// <summary>Сколько компьютеров помнит список «Недавние».</summary>
+    public const int MaxRecentComputers = 15;
+
     public bool HasSelection => SelectedComputer is not null;
 
     public bool IsFavorite(ComputerInfo computer) => _settingsStore.Load().FavoriteComputers.Contains(computer.Id);
+
+    /// <summary>Избранное выбранного компьютера — для подписи кнопки-переключателя на странице.</summary>
+    public bool IsSelectedFavorite => SelectedComputer is { } computer && IsFavorite(computer);
 
     public void OnNavigatedTo(object? parameter)
     {
@@ -228,14 +235,36 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
     partial void OnSelectedComputerChanged(ComputerInfo? value)
     {
+        if (_rebuildingList) return;
+
         OnPropertyChanged(nameof(HasSelection));
+        OnPropertyChanged(nameof(IsSelectedFavorite));
         RebuildComputerButtons();
 
         var id = value?.Id;
         if (id == _trackedComputerId) return; // та же запись, просто обновились поля (например, «в сети»).
 
         _trackedComputerId = id;
+        if (value is not null) AddToRecent(value.Id);
         _ = LoadSessionsAsync(value);
+    }
+
+    /// <summary>Выбранный компьютер попадает в «Недавние» страницы «Избранное»: не больше 15, без повторов, свежие первыми.</summary>
+    private void AddToRecent(Guid id)
+    {
+        try
+        {
+            var settings = _settingsStore.Load();
+            settings.RecentComputers.Remove(id);
+            settings.RecentComputers.Insert(0, id);
+            if (settings.RecentComputers.Count > MaxRecentComputers)
+                settings.RecentComputers.RemoveRange(MaxRecentComputers, settings.RecentComputers.Count - MaxRecentComputers);
+            _settingsStore.Save(settings);
+        }
+        catch (Exception ex)
+        {
+            CrashLog.Write("Сохранение недавних компьютеров", ex);
+        }
     }
 
     partial void OnSelectedSessionChanged(SessionInfo? value) => RebuildSessionButtons();
@@ -359,10 +388,23 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         var filtered = ComputersFilter.ApplyAndSort(source, CurrentFilterState());
 
         var selectedId = SelectedComputer?.Id;
-        Computers.Clear();
-        foreach (var computer in filtered) Computers.Add(computer);
 
-        SelectedComputer = selectedId is { } id ? Computers.FirstOrDefault(c => c.Id == id) : null;
+        // Clear() заставляет ListBox записать в SelectedComputer null; пока список перестраивается, это не смена
+        // выбора (иначе сессии перечитываются, а компьютер заново попадает в «Недавние» при каждом событии индекса).
+        _rebuildingList = true;
+        try
+        {
+            Computers.Clear();
+            foreach (var computer in filtered) Computers.Add(computer);
+        }
+        finally
+        {
+            _rebuildingList = false;
+        }
+
+        var reselected = selectedId is { } id ? Computers.FirstOrDefault(c => c.Id == id) : null;
+        if (!Equals(SelectedComputer, reselected)) SelectedComputer = reselected;
+        else if (reselected is null && _trackedComputerId is not null) OnSelectedComputerChanged(null);
     }
 
     private ComputersFilterState CurrentFilterState() => new()
@@ -438,6 +480,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         if (!settings.FavoriteComputers.Remove(computer.Id)) settings.FavoriteComputers.Add(computer.Id);
         _settingsStore.Save(settings);
         OnPropertyChanged(nameof(Computers)); // список не меняется составом, но биндинг «избранное» должен перечитаться
+        OnPropertyChanged(nameof(IsSelectedFavorite));
     }
 
     // ----- группы -------------------------------------------------------------------------------------------------
@@ -488,6 +531,13 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         var stored = settings.ComputerGroups.FirstOrDefault(g => g.Id == group.Id);
         if (stored is not null) stored.Name = group.Name;
         _settingsStore.Save(settings);
+
+        // ComputerGroup не реализует INotifyPropertyChanged: мутация Name на месте не обновляет уже отрисованный
+        // ListBox-элемент (ObservableCollection уведомляет только о составе, не о свойствах элементов).
+        // Перечитываем список из настроек, чтобы UI показал новое имя сразу, без перезапуска/прокрутки.
+        var wasSelected = SelectedGroup?.Id == group.Id;
+        ReloadGroupsAndSubnets();
+        if (wasSelected) SelectedGroup = Groups.FirstOrDefault(g => g.Id == group.Id);
     }
 
     [RelayCommand]

@@ -19,5 +19,6 @@
   <conv:SessionStateTextConverter x:Key="SessionStateTextConverter" />
   <conv:AvailabilityStatusConverter x:Key="AvailabilityStatusConverter" />
   <conv:ProtocolAvailabilityTextConverter x:Key="ProtocolAvailabilityTextConverter" />
+  <conv:FavoriteButtonTextConverter x:Key="FavoriteButtonTextConverter" />
 
 </ResourceDictionary>

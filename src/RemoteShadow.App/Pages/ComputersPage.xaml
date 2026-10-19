@@ -2,7 +2,14 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="clr-namespace:RemoteShadow.Core.Models;assembly=RemoteShadow.Core"
-             xmlns:actions="clr-namespace:RemoteShadow.App.Shell.Actions">
+             xmlns:actions="clr-namespace:RemoteShadow.App.Shell.Actions"
+             xmlns:pages="clr-namespace:RemoteShadow.App.Pages">
+  <UserControl.Resources>
+    <pages:EnumTextConverter x:Key="EnumTextConverter" />
+    <DataTemplate x:Key="EnumItemTemplate">
+      <TextBlock Text="{Binding Converter={StaticResource EnumTextConverter}}" />
+    </DataTemplate>
+  </UserControl.Resources>
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="380" />
@@ -18,10 +25,10 @@
       <Expander DockPanel.Dock="Top" Header="Группы и подсети" Margin="0,0,0,8" IsExpanded="False">
         <StackPanel Margin="0,8,0,0">
           <TextBlock Text="Доступность" Style="{StaticResource CaptionMutedTextStyle}" />
-          <ComboBox ItemsSource="{Binding AvailabilityFilterValues}" SelectedItem="{Binding AvailabilityFilter}" Margin="0,2,0,8" />
+          <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding AvailabilityFilterValues}" SelectedItem="{Binding AvailabilityFilter}" Margin="0,2,0,8" />
 
           <TextBlock Text="Источник" Style="{StaticResource CaptionMutedTextStyle}" />
-          <ComboBox ItemsSource="{Binding SourceFilterValues}" SelectedItem="{Binding SourceFilter}" Margin="0,2,0,8" />
+          <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding SourceFilterValues}" SelectedItem="{Binding SourceFilter}" Margin="0,2,0,8" />
 
           <TextBlock Text="Мои группы" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,2" />
           <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup, Mode=TwoWay}"
@@ -59,6 +66,11 @@
             <Button Content="+ в выбранную группу" Command="{Binding AddSelectedComputerToGroupCommand}" CommandParameter="{Binding SelectedGroup}" Margin="0,0,4,0" />
             <Button Content="− из выбранной группы" Command="{Binding RemoveComputerFromGroupCommand}" CommandParameter="{Binding SelectedGroup}" />
           </StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Button Content="{Binding IsSelectedFavorite, Converter={StaticResource FavoriteButtonTextConverter}}"
+                    Command="{Binding ToggleFavoriteCommand}" CommandParameter="{Binding SelectedComputer}"
+                    AutomationProperties.Name="Избранное" />
+          </StackPanel>
 
           <TextBlock Text="Подсети" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,2" />
           <ListBox ItemsSource="{Binding Subnets}" SelectedItem="{Binding SelectedSubnet, Mode=TwoWay}"
@@ -95,7 +107,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <ComboBox ItemsSource="{Binding ProbeKindValues}" SelectedItem="{Binding NewSubnetProbeKind}" />
+              <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding ProbeKindValues}" SelectedItem="{Binding NewSubnetProbeKind}" />
               <Button Grid.Column="1" Content="Добавить подсеть" Margin="4,0,0,0" Command="{Binding AddSubnetCommand}" />
             </Grid>
           </StackPanel>
@@ -107,11 +119,18 @@
       </Expander>
 
       <!-- Фильтры и поиск -->
-      <TextBox DockPanel.Dock="Top"
-               Margin="0,0,0,8"
-               Padding="8,6"
-               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-               AutomationProperties.Name="Поиск компьютера" />
+      <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+        <TextBox Padding="8,6"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                 AutomationProperties.Name="Поиск компьютера" />
+        <TextBlock Text="Имя, описание или ОС компьютера"
+                   Margin="11,0,8,0"
+                   VerticalAlignment="Center"
+                   IsHitTestVisible="False"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
+      </Grid>
       <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
         <CheckBox Content="RDP" IsChecked="{Binding FilterRdp}" Margin="0,0,10,0" />
         <CheckBox Content="SMB" IsChecked="{Binding FilterSmb}" Margin="0,0,10,0" />
@@ -123,10 +142,29 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <ComboBox ItemsSource="{Binding SortByValues}" SelectedItem="{Binding SortBy}" AutomationProperties.Name="Сортировка" />
+        <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding SortByValues}" SelectedItem="{Binding SortBy}" AutomationProperties.Name="Сортировка" />
         <Button Grid.Column="1" Content="Обновить доступность" Margin="4,0,0,0" Command="{Binding RefreshVisibleAvailabilityCommand}"
                 ToolTip="Проверяет ICMP/RDP/SMB/SSH только для видимого списка — никогда не всю сеть автоматически." />
       </Grid>
+
+      <Expander DockPanel.Dock="Bottom" Header="Найдено сканированием (вне AD / требует проверки)" IsExpanded="False"
+                Visibility="{Binding DiscoveredDevices.Count, Converter={StaticResource EmptyToVisibilityConverter}, ConverterParameter=invert}">
+        <ListBox ItemsSource="{Binding DiscoveredDevices}" BorderThickness="0" Background="Transparent" MaxHeight="160"
+                 ItemContainerStyle="{StaticResource ListItemStyle}" AutomationProperties.Name="Устройства, найденные сканированием">
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="{x:Type models:DiscoveredDevice}">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding IpAddress}" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding ReverseDnsName}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,8,0" />
+                <TextBlock Text="не в AD" Style="{StaticResource CaptionMutedTextStyle}"
+                           Visibility="{Binding MatchedComputerId, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}" />
+                <TextBlock Text="не найден при последнем скане" Style="{StaticResource CaptionMutedTextStyle}"
+                           Visibility="{Binding FoundInLastScan, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Expander>
 
       <ListBox ItemsSource="{Binding Computers}"
                SelectedItem="{Binding SelectedComputer, Mode=TwoWay}"
@@ -163,24 +201,6 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
-      <Expander DockPanel.Dock="Bottom" Header="Найдено сканированием (вне AD / требует проверки)" IsExpanded="False"
-                Visibility="{Binding DiscoveredDevices.Count, Converter={StaticResource EmptyToVisibilityConverter}, ConverterParameter=invert}">
-        <ListBox ItemsSource="{Binding DiscoveredDevices}" BorderThickness="0" Background="Transparent" MaxHeight="160"
-                 ItemContainerStyle="{StaticResource ListItemStyle}" AutomationProperties.Name="Устройства, найденные сканированием">
-          <ListBox.ItemTemplate>
-            <DataTemplate DataType="{x:Type models:DiscoveredDevice}">
-              <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding IpAddress}" Margin="0,0,8,0" />
-                <TextBlock Text="{Binding ReverseDnsName}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,8,0" />
-                <TextBlock Text="не в AD" Style="{StaticResource CaptionMutedTextStyle}"
-                           Visibility="{Binding MatchedComputerId, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}" />
-                <TextBlock Text="не найден при последнем скане" Style="{StaticResource CaptionMutedTextStyle}"
-                           Visibility="{Binding FoundInLastScan, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}" />
-              </StackPanel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </Expander>
     </DockPanel>
 
     <Border Grid.Column="1" Style="{StaticResource VerticalDividerStyle}" />
