@@ -101,7 +101,9 @@ public partial class App : Application
         // Демо-режим хранит всё во временной папке и не трогает настройки и журнал настоящей работы.
         var paths = options.IsDemo
             ? new AppPaths(Path.Combine(Path.GetTempPath(), "RemoteShadow-Demo"))
-            : new AppPaths();
+            : options.Profile is { } profile
+                ? new AppPaths(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RemoteShadow-" + profile))
+                : new AppPaths();
         CrashLog.Initialize(paths.DataDir);
 
         // Два экземпляра с общим settings.json затирают правки друг друга.
@@ -123,7 +125,7 @@ public partial class App : Application
         ShowDemoLaunches(services, options);
 
         var coordinator = services.GetRequiredService<ConnectionCoordinator>();
-        var signedIn = await coordinator.TryAutoLogonAsync(settings) || coordinator.ShowLogin(null, exitsApp: true);
+        var signedIn = (!options.PromptsForLogin && await coordinator.TryAutoLogonAsync(settings)) || coordinator.ShowLogin(null, exitsApp: true);
         if (!signedIn)
         {
             Shutdown();

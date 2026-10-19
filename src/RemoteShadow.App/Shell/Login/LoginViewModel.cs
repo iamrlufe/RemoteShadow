@@ -20,6 +20,7 @@ public sealed partial class LoginViewModel : ObservableObject
     private readonly ConnectionCoordinator _coordinator;
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
+    private readonly StartupOptions _options;
     private CancellationTokenSource? _cts;
 
     public LoginViewModel(
@@ -37,6 +38,7 @@ public sealed partial class LoginViewModel : ObservableObject
         _coordinator = coordinator;
         _dialogs = dialogs;
         _notifications = notifications;
+        _options = options;
         IsDemo = options.IsDemo;
 
         var environment = DetectEnvironment();
@@ -48,6 +50,12 @@ public sealed partial class LoginViewModel : ObservableObject
         _domain = settings.LastDomain ?? environment.DomainName ?? string.Empty;
         _domainController = settings.LastDomainController ?? string.Empty;
         _userName = settings.LastUserName ?? string.Empty;
+
+        // Ключи запуска --domain/--dc/--user важнее сохранённого: вход под другой учётной записью без правки настроек.
+        if (options.Domain is not null) _domain = options.Domain;
+        if (options.DomainController is not null) _domainController = options.DomainController;
+        if (options.UserName is not null) _userName = options.UserName;
+        if (options.Domain is not null || options.DomainController is not null || options.UserName is not null) _isCurrentUserMode = false;
 
         // Тихий вход при запуске не удался: сразу объясняем причину, а не показываем пустую форму.
         if (coordinator.TakeAutoLogonFailure() is { } failure) ShowLogonFailure(failure);
@@ -173,9 +181,12 @@ public sealed partial class LoginViewModel : ObservableObject
 
         if (stored is null) return null;
 
-        if (!string.IsNullOrWhiteSpace(stored.Domain)) Domain = stored.Domain;
-        if (!string.IsNullOrWhiteSpace(stored.DomainController)) DomainController = stored.DomainController;
-        if (!string.IsNullOrWhiteSpace(stored.UserName))
+        // Сохранённый пароль принадлежит сохранённой учётной записи: при входе под другой (--user) его не подставляем.
+        if (_options.UserName is not null && !string.Equals(stored.UserName, _options.UserName, StringComparison.OrdinalIgnoreCase)) return null;
+
+        if (!string.IsNullOrWhiteSpace(stored.Domain) && _options.Domain is null) Domain = stored.Domain;
+        if (!string.IsNullOrWhiteSpace(stored.DomainController) && _options.DomainController is null) DomainController = stored.DomainController;
+        if (!string.IsNullOrWhiteSpace(stored.UserName) && _options.UserName is null)
         {
             UserName = stored.UserName;
             RememberLogin = true;

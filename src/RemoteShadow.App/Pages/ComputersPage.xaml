@@ -93,7 +93,7 @@
                      Checked="OnTabChecked" AutomationProperties.Name="Список компьютеров" />
         <RadioButton Style="{StaticResource TabChipStyle}" Content="Группы" Tag="groups" GroupName="ComputersTab"
                      Checked="OnTabChecked" AutomationProperties.Name="Группы" />
-        <RadioButton Style="{StaticResource TabChipStyle}" Content="Подсети" Tag="subnets" GroupName="ComputersTab"
+        <RadioButton x:Name="TabSubnets" Style="{StaticResource TabChipStyle}" Content="Подсети" Tag="subnets" GroupName="ComputersTab"
                      Checked="OnTabChecked" AutomationProperties.Name="Подсети и сканирование" />
         <RadioButton Style="{StaticResource TabChipStyle}" Content="Фильтры" Tag="filters" GroupName="ComputersTab"
                      Checked="OnTabChecked" AutomationProperties.Name="Фильтры и сортировка" />

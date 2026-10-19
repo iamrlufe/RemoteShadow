@@ -868,6 +868,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             ScanStatus = $"Готово: найдено {Plural.Format(foundKeysThisScan.Count, "устройство", "устройства", "устройств")}.";
             PersistDiscovered();
             StartAutoEnrichmentIfEnabled();
+            ScanFinished?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException)
         {
@@ -885,6 +886,9 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             if (ReferenceEquals(_scanCts, cts)) IsScanning = false;
         }
     }
+
+    /// <summary>Сканирование подсети успешно закончилось: страница показывает вкладку «Найдено» с результатом.</summary>
+    public event EventHandler? ScanFinished;
 
     /// <summary>Сопоставляет найденное устройство с компьютером AD; если у устройства нет имени, берёт имя компьютера AD.</summary>
     private DiscoveredDevice WithAdMatch(DiscoveredDevice device)

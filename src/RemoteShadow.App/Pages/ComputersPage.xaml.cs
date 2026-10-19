@@ -45,8 +45,17 @@ public partial class ComputersPage : UserControl, IFilterablePage
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.OldValue is ComputersPageViewModel old) old.PropertyChanged -= OnViewModelPropertyChanged;
-        if (e.NewValue is ComputersPageViewModel vm) vm.PropertyChanged += OnViewModelPropertyChanged;
+        if (e.OldValue is ComputersPageViewModel old)
+        {
+            old.PropertyChanged -= OnViewModelPropertyChanged;
+            old.ScanFinished -= OnScanFinished;
+        }
+
+        if (e.NewValue is ComputersPageViewModel vm)
+        {
+            vm.PropertyChanged += OnViewModelPropertyChanged;
+            vm.ScanFinished += OnScanFinished;
+        }
     }
 
     // Переход из поиска Ctrl+K или из «Избранного» выбирает компьютер: показываем список, где он выделен.
@@ -54,6 +63,12 @@ public partial class ComputersPage : UserControl, IFilterablePage
     {
         if (e.PropertyName == nameof(ComputersPageViewModel.SelectedComputer) && ViewModel?.SelectedComputer is not null && TabList.IsChecked != true)
             TabList.IsChecked = true;
+    }
+
+    // Скан закончился, пока пользователь на вкладке «Подсети»: сразу показываем найденные устройства, а не ждём, что он их найдёт сам.
+    private void OnScanFinished(object? sender, EventArgs e)
+    {
+        if (TabSubnets.IsChecked == true) TabFound.IsChecked = true;
     }
 
     /// <summary>Вложенный список без собственной прокрутки не должен глотать колесо мыши: отдаём его объемлющей панели.</summary>
