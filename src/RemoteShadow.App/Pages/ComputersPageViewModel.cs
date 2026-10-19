@@ -503,8 +503,8 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             if (!string.IsNullOrWhiteSpace(IpFilter)) parts.Add($"IP «{IpFilter.Trim()}»");
             if (!string.IsNullOrWhiteSpace(OuFilter)) parts.Add($"подразделение «{OuFilter.Trim()}»");
             if (!string.IsNullOrWhiteSpace(DescriptionFilter)) parts.Add($"описание «{DescriptionFilter.Trim()}»");
-            if (!ShowDisabledAd) parts.Add("компьютеры, отключённые в AD, скрыты");
-            return parts.Count == 0 ? null : "Действуют условия: " + string.Join("; ", parts) + ".";
+            if (!ShowDisabledAd) parts.Add("отключённые в AD скрыты");
+            return parts.Count == 0 ? null : "Условия: " + string.Join("; ", parts) + ".";
         }
     }
 

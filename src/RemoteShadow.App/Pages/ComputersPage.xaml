@@ -57,6 +57,23 @@
                 AutomationProperties.Name="Отменить проверку статусов" />
       </Grid>
 
+      <!-- Фильтры и поиск -->
+      <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+        <TextBox x:Name="FilterBox"
+                 Padding="8,6"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                 PreviewKeyDown="OnFilterBoxKeyDown"
+                 AutomationProperties.Name="Поиск компьютера"
+                 AutomationProperties.AcceleratorKey="Ctrl+F" />
+        <TextBlock Text="Имя, описание или ОС (Ctrl+F)"
+                   Margin="11,0,8,0"
+                   VerticalAlignment="Center"
+                   IsHitTestVisible="False"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
+      </Grid>
+
       <!-- «Найти пользователя на компьютерах» (из поиска Ctrl+K): где сейчас работает пользователь -->
       <Border DockPanel.Dock="Top" Style="{StaticResource CardStyle}" Padding="12,10" Margin="0,0,0,8"
               Visibility="{Binding HasFindPanel, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -245,23 +262,6 @@
         </ScrollViewer>
       </Expander>
 
-      <!-- Фильтры и поиск -->
-      <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
-        <TextBox x:Name="FilterBox"
-                 Padding="8,6"
-                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                 PreviewKeyDown="OnFilterBoxKeyDown"
-                 AutomationProperties.Name="Поиск компьютера"
-                 AutomationProperties.AcceleratorKey="Ctrl+F" />
-        <TextBlock Text="Имя, описание или ОС (Ctrl+F)"
-                   Margin="11,0,8,0"
-                   VerticalAlignment="Center"
-                   IsHitTestVisible="False"
-                   TextTrimming="CharacterEllipsis"
-                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                   Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
-      </Grid>
-
       <!-- Фильтры: свёрнуты по умолчанию, раскрытая панель прокручивается и не вытесняет список.
            320 показывает все фильтры (включая чекбоксы RDP/SMB/SSH и «Показывать отключённые») и сортировку
            без внутренней прокрутки на обычном окне — раньше 150px обрезали их ниже видимой области. -->
@@ -292,7 +292,7 @@
               <TextBox Padding="8,6" Text="{Binding OuFilter, UpdateSourceTrigger=PropertyChanged}"
                        ToolTip="Часть пути подразделения, например Бухгалтерия"
                        AutomationProperties.Name="Фильтр по подразделению (OU)" />
-              <TextBlock Text="Подразделение (OU)" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
+              <TextBlock Text="OU" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
                          Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                          Visibility="{Binding OuFilter, Converter={StaticResource EmptyToVisibilityConverter}}" />
             </Grid>

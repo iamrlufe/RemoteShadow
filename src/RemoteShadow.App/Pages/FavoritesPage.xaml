@@ -40,7 +40,7 @@
           </StackPanel>
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-            <Button Style="{StaticResource PrimaryButtonStyle}"
+            <Button Style="{StaticResource AccentSubtleButtonStyle}"
                     Margin="0,0,8,0"
                     Content="Открыть"
                     Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -106,7 +106,7 @@
   <Grid>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
       <!-- Как на остальных страницах: содержимое прижато влево и не шире 980, а не плавает по центру широкого окна. -->
-      <Grid Margin="24">
+      <Grid Margin="16,16,24,24">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" MaxWidth="980" />
           <ColumnDefinition Width="Auto" />
