@@ -41,7 +41,7 @@
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
             <Button Style="{StaticResource AccentSubtleButtonStyle}"
-                    Margin="0,0,8,0"
+                    Margin="0,0,8,0" MinWidth="92"
                     Content="Открыть"
                     Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     CommandParameter="{Binding}"
@@ -57,7 +57,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type actions:ActionButtonModel}">
                   <Button Style="{StaticResource FlatActionButtonStyle}"
-                          Margin="0,0,8,0"
+                          Margin="0,0,8,0" MinWidth="84"
                           Command="{Binding Command}"
                           IsEnabled="{Binding IsEnabled}"
                           ToolTip="{Binding ToolTipText}"
@@ -74,7 +74,7 @@
             </ItemsControl>
 
             <Button Style="{StaticResource FlatActionButtonStyle}"
-                    Margin="0"
+                    Margin="0" MinWidth="200"
                     Command="{Binding DataContext.RemoveFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     CommandParameter="{Binding}"
                     Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -86,7 +86,7 @@
               </StackPanel>
             </Button>
             <Button Style="{StaticResource FlatActionButtonStyle}"
-                    Margin="0"
+                    Margin="0" MinWidth="200"
                     Command="{Binding DataContext.AddFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     CommandParameter="{Binding}"
                     Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=invert}"

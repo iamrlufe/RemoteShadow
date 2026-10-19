@@ -9,11 +9,7 @@ namespace RemoteShadow.App.Pages;
 public partial class ComputersPage : UserControl, IFilterablePage
 {
     /// <summary>Сколько места по высоте оставить списку компьютеров (и строкам «Показано N из M»), когда раскрыта панель.</summary>
-    private const double ReservedForList = 200;
-
-    /// <summary>Заголовок свёрнутой панели (Expander) и поле поиска между панелями.</summary>
-    private const double ExpanderHeaderHeight = 52;
-    private const double SearchBoxHeight = 44;
+    private const double MinListHeight = 170;
 
     public ComputersPage()
     {
@@ -24,6 +20,7 @@ public partial class ComputersPage : UserControl, IFilterablePage
         ActionMenuBuilder.Attach(SessionList, () => ViewModel?.BuildSessionMenu());
 
         SizeChanged += (_, _) => FitPanelsToHeight();
+        LeftPanel.SizeChanged += (_, _) => RefitOpenPanel();
     }
 
     private ComputersPageViewModel? ViewModel => DataContext as ComputersPageViewModel;
@@ -68,19 +65,30 @@ public partial class ComputersPage : UserControl, IFilterablePage
     private void FitPanelsToHeight()
     {
         if (!IsLoaded) return;
+        RefitOpenPanel();
 
-        // Над панелями — заголовок и кнопки (их высота зависит от ширины: кнопки переносятся), поэтому берём фактическое положение.
-        var groupsTop = GroupsExpander.TranslatePoint(new Point(0, 0), this).Y;
-        var forGroups = ActualHeight - groupsTop - ExpanderHeaderHeight - SearchBoxHeight - ExpanderHeaderHeight - ReservedForList;
-        GroupsScroll.MaxHeight = Math.Clamp(forGroups, 120, 280);
+        // Раскрытие/сворачивание меняет раскладку уже после обработчика: повторяем, когда размеры устоятся.
+        Dispatcher.BeginInvoke(new Action(RefitOpenPanel), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
 
-        var filtersTop = FiltersExpander.TranslatePoint(new Point(0, 0), this).Y;
-        var forFilters = ActualHeight - filtersTop - ExpanderHeaderHeight - ReservedForList;
-        FiltersScroll.MaxHeight = Math.Clamp(forFilters, 120, 320);
+    private void RefitOpenPanel()
+    {
+        if (!IsLoaded) return;
+        FitPanel(GroupsExpander, GroupsScroll, 120, 280);
+        FitPanel(FiltersExpander, FiltersScroll, 120, 320);
+        FitPanel(DiscoveredExpander, DiscoveredScroll, 140, 360);
+    }
 
-        var discoveredTop = DiscoveredExpander.TranslatePoint(new Point(0, 0), this).Y;
-        var forDiscovered = ActualHeight - discoveredTop - ExpanderHeaderHeight - ReservedForList;
-        DiscoveredScroll.MaxHeight = Math.Clamp(forDiscovered, 140, 360);
+    /// <summary>Высота раскрытой панели подбирается по месту, реально оставшемуся под списком компьютеров: список всегда виден.</summary>
+    private void FitPanel(Expander expander, ScrollViewer scroll, double min, double max)
+    {
+        if (!expander.IsExpanded || !expander.IsVisible) { scroll.MaxHeight = max; return; }
+
+        var listTop = ComputerList.TranslatePoint(new Point(0, 0), LeftPanel).Y;
+        var freeForList = LeftPanel.ActualHeight - listTop;
+        var target = scroll.ActualHeight + (freeForList - MinListHeight);
+        var clamped = Math.Clamp(target, min, max);
+        if (Math.Abs(scroll.MaxHeight - clamped) > 1) scroll.MaxHeight = clamped;
     }
 
     // ----- поиск --------------------------------------------------------------------------------------------------

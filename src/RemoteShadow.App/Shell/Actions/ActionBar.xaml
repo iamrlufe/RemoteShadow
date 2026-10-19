@@ -8,6 +8,8 @@
   <UserControl.Resources>
     <DataTemplate x:Key="ActionButtonTemplate" DataType="{x:Type local:ActionButtonModel}">
       <Button Style="{StaticResource FlatActionButtonStyle}"
+              HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Left"
               Command="{Binding Command}"
               IsEnabled="{Binding IsEnabled}"
               ToolTip="{Binding ToolTipText}"
@@ -51,7 +53,7 @@
                   ItemTemplate="{StaticResource ActionButtonTemplate}">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
-          <WrapPanel Orientation="Horizontal" />
+          <WrapPanel Orientation="Horizontal" ItemWidth="204" />
         </ItemsPanelTemplate>
       </ItemsControl.ItemsPanel>
       <ItemsControl.GroupStyle>

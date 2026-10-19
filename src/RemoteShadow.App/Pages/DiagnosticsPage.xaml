@@ -80,8 +80,6 @@
             <StackPanel>
               <TextBlock Text="{Binding SelectedComputer.Name}" Style="{StaticResource PageTitleStyle}" TextTrimming="CharacterEllipsis"
                          ToolTip="{Binding SelectedComputer.Name}" />
-              <TextBlock Text="Почему не работает shadow: политика, брандмауэр, служба, права"
-                         Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
               <Button Style="{StaticResource FlatActionButtonStyle}"
@@ -102,6 +100,8 @@
                       AutomationProperties.Name="Запустить диагностику" />
             </StackPanel>
           </Grid>
+          <TextBlock Text="Почему не работает shadow: политика, брандмауэр, служба, права"
+                     Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
 
           <StackPanel Margin="0,16,0,0"
                       Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -118,15 +118,19 @@
           <!-- Главный вывод -->
           <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0"
                   Visibility="{Binding VerdictText, Converter={StaticResource NullToVisibilityConverter}}">
-            <StackPanel Orientation="Horizontal">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
               <TextBlock Style="{StaticResource IconTextStyle}" FontSize="28" Margin="0,0,14,0"
                          Text="{Binding VerdictStatus, Converter={StaticResource DiagnosticStatusIconConverter}}"
                          Foreground="{Binding VerdictStatus, Converter={StaticResource StatusToBrushConverter}}" />
-              <TextBlock Text="{Binding VerdictText}"
-                         FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="620"
+              <TextBlock Grid.Column="1" Text="{Binding VerdictText}"
+                         FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap"
                          VerticalAlignment="Center"
                          Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-            </StackPanel>
+            </Grid>
           </Border>
 
           <ItemsControl ItemsSource="{Binding Items}" Margin="0,12,0,0" IsTabStop="False">
