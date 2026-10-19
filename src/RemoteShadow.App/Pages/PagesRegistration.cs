@@ -18,17 +18,29 @@ public static class PagesRegistration
     {
         services.AddTransient<ComputersPageViewModel>();
         services.AddSingleton(new PageRegistration(
-            new PageInfo(PageIds.Computers, "Компьютеры", "device-desktop", 0),
+            new PageInfo(PageIds.Computers, "Компьютеры", "device-desktop", 10),
             sp => new ComputersPage { DataContext = sp.GetRequiredService<ComputersPageViewModel>() }));
 
         services.AddTransient<UsersPageViewModel>();
         services.AddSingleton(new PageRegistration(
-            new PageInfo(PageIds.Users, "Пользователи AD", "users", 10),
+            new PageInfo(PageIds.Users, "Пользователи AD", "users", 20),
             sp => new UsersPage { DataContext = sp.GetRequiredService<UsersPageViewModel>() }));
+
+        services.AddTransient<FavoritesPageViewModel>();
+        services.AddSingleton(new PageRegistration(
+            new PageInfo(PageIds.Favorites, "Избранное", "star", 30),
+            sp => new FavoritesPage { DataContext = sp.GetRequiredService<FavoritesPageViewModel>() }));
+
+        // Journal (Order 40) и Settings (Order 90) добавит следующий шаг по тому же образцу:
+        //   services.AddTransient<JournalPageViewModel>();
+        //   services.AddSingleton(new PageRegistration(
+        //       new PageInfo(PageIds.Journal, "Журнал", "history", 40),
+        //       sp => new JournalPage { DataContext = sp.GetRequiredService<JournalPageViewModel>() }));
+        // Порядок в навигации: Computers 10, Users 20, Favorites 30, Journal 40, Diagnostics 50, Settings 90.
 
         services.AddTransient<DiagnosticsPageViewModel>();
         services.AddSingleton(new PageRegistration(
-            new PageInfo(PageIds.Diagnostics, "Диагностика", "stethoscope", 20),
+            new PageInfo(PageIds.Diagnostics, "Диагностика", "stethoscope", 50),
             sp => new DiagnosticsPage { DataContext = sp.GetRequiredService<DiagnosticsPageViewModel>() }));
 
         return services;
