@@ -39,6 +39,11 @@ public sealed class DeviceFingerprinter : IDeviceFingerprinter
         var netbios = netbiosTask.Result;
         var ports = portsTask.Result ?? new HashSet<int>();
 
+        // NetBIOS часто выключен; тогда имя Windows-компьютера читаем из TLS-сертификата службы RDP.
+        string? certName = null;
+        if (netbios?.Name is null && ports.Contains(3389))
+            certName = await SafeAsync(() => RdpCertificateProbe.ReadNameAsync(ipAddress, timeout, ct)).ConfigureAwait(false);
+
         var mac = _arp?.TryGetMac(ipAddress) ?? netbios?.Mac;
         var vendor = mac is null ? null : _oui.Lookup(mac);
 
@@ -48,8 +53,8 @@ public sealed class DeviceFingerprinter : IDeviceFingerprinter
 
         return new DeviceFingerprint
         {
-            Hostname = netbios?.Name,
-            NameSource = netbios?.Name is null ? null : "NetBIOS",
+            Hostname = netbios?.Name ?? certName,
+            NameSource = netbios?.Name is not null ? "NetBIOS" : certName is not null ? "сертификат RDP" : null,
             Workgroup = netbios?.Workgroup,
             Mac = mac,
             Vendor = vendor,

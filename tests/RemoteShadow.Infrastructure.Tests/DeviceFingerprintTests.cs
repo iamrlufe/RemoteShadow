@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using RemoteShadow.Infrastructure;
 
@@ -71,4 +72,40 @@ public class DeviceFingerprintTests
     [InlineData(new int[0], null, null, null)]
     public void Kind_is_guessed_from_ports_vendor_and_banner(int[] ports, string? vendor, string? banner, string? expected)
         => Assert.Equal(expected, DeviceFingerprinter.ClassifyKind(ports.ToHashSet(), vendor, banner));
+}
+
+public class RdpCertificateProbeTests
+{
+    [Fact]
+    public void Server_choosing_tls_or_credssp_allows_the_handshake()
+    {
+        byte[] Response(byte protocol) => new byte[] { 3, 0, 0, 19, 14, 0xD0, 0, 0, 0, 0, 0, 2, 0, 8, 0, protocol, 0, 0, 0 };
+
+        Assert.True(RdpCertificateProbe.ServerSelectedTls(Response(1)));
+        Assert.True(RdpCertificateProbe.ServerSelectedTls(Response(2)));
+        Assert.False(RdpCertificateProbe.ServerSelectedTls(Response(0))); // стандартная защита RDP, TLS нет
+        Assert.False(RdpCertificateProbe.ServerSelectedTls(new byte[] { 3, 0, 0, 19, 14, 0xD0, 0, 0, 0, 0, 0, 3, 0, 8, 0, 5, 0, 0, 0 })); // отказ
+        Assert.False(RdpCertificateProbe.ServerSelectedTls(new byte[3]));
+    }
+
+    [Fact]
+    public void Connection_request_is_a_well_formed_tpkt()
+    {
+        Assert.Equal(RdpCertificateProbe.ConnectionRequest.Length, RdpCertificateProbe.ConnectionRequest[3]);
+        Assert.Equal(0x03, RdpCertificateProbe.ConnectionRequest[0]);
+    }
+
+    [Fact]
+    public void Certificate_name_prefers_a_host_name_and_skips_ip_addresses()
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        X509Certificate2 Make(string subject)
+        {
+            var request = new CertificateRequest(subject, rsa, System.Security.Cryptography.HashAlgorithmName.SHA256, System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+            return request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+        }
+
+        Assert.Equal("pc-acc-014.corp.local", RdpCertificateProbe.NameFromCertificate(Make("CN=pc-acc-014.corp.local")));
+        Assert.Null(RdpCertificateProbe.NameFromCertificate(Make("CN=10.0.0.196")));
+    }
 }
