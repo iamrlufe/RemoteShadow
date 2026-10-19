@@ -16,7 +16,15 @@ namespace RemoteShadow.Infrastructure;
 public sealed class SubnetScanner : ISubnetScanner
 {
     /// <summary>Порты, по которым определяется «устройство в сети», когда включена TCP-проверка.</summary>
-    private static readonly (int Port, string Name)[] TcpPorts = { (445, "smb"), (3389, "rdp"), (22, "ssh") };
+    /// <remarks>
+    /// Не только SMB/RDP/SSH: серверы домена часто закрывают их файрволом, но отвечают на RPC (135), WinRM (5985),
+    /// LDAP/DNS (389, 53), веб (80, 443) или SQL (1433). Адрес считается живым, если открыт хотя бы один порт.
+    /// </remarks>
+    private static readonly (int Port, string Name)[] TcpPorts =
+    {
+        (445, "smb"), (3389, "rdp"), (22, "ssh"), (135, "rpc"), (5985, "winrm"), (80, "http"), (443, "https"),
+        (389, "ldap"), (53, "dns"), (1433, "mssql"),
+    };
 
     private readonly IHostProbe _tcpProbe;
     private readonly IIcmpProbe _icmpProbe;

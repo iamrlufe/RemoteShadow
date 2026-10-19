@@ -826,9 +826,15 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         _scanCts = cts;
         IsScanning = true;
         ScanStatus = "Сканирование начато…";
+        var finished = false;
         try
         {
-            var progress = new Progress<ScanProgress>(p => ScanStatus = $"Проверено {p.Completed} из {Plural.Format(p.Total, "адреса", "адресов", "адресов")}…");
+            // Progress<T> доставляет отчёты в интерфейс отложенно: последний отчёт «Проверено N из N» мог прийти уже после
+            // итоговой строки «Готово: найдено …» и затереть её (у пользователя статус навсегда оставался на «Проверено 1022 из 1022»).
+            var progress = new Progress<ScanProgress>(p =>
+            {
+                if (!finished) ScanStatus = $"Проверено {p.Completed} из {Plural.Format(p.Total, "адреса", "адресов", "адресов")}…";
+            });
 
             // Без UiThread.Post: продолжение после await в реальном приложении и так возвращается в поток интерфейса
             // (WPF SynchronizationContext), а в тестах без него выполняется тут же — обновление видно сразу в обоих случаях.
@@ -859,16 +865,19 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
                 if (index >= 0) DiscoveredDevices[index] = stale;
             }
 
+            finished = true;
             ScanStatus = $"Готово: найдено {Plural.Format(foundKeysThisScan.Count, "устройство", "устройства", "устройств")}.";
             PersistDiscovered();
             StartAutoEnrichmentIfEnabled();
         }
         catch (OperationCanceledException)
         {
+            finished = true;
             ScanStatus = "Сканирование отменено.";
         }
         catch (Exception ex)
         {
+            finished = true;
             ScanStatus = null;
             _notifications.Error($"Не удалось просканировать подсеть: {ex.Message}");
         }
