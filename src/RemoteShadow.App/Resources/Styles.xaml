@@ -22,6 +22,7 @@
     BadgeStyle (+ Success/Warning/Danger/Info)  бейдж-метка:
                          <Border Style="{Binding State, Converter={StaticResource StatusToBadgeStyleConverter}}"><TextBlock Text="активна"/></Border>
     EmptyStateStyle      StackPanel «пустое состояние» по центру области: значок, EmptyStateTitleStyle, EmptyStateTextStyle
+    TabChipStyle         вкладка-«чип» (RadioButton) для переключения содержимого колонки
     ListItemStyle        ItemContainerStyle для ListBox: наведение, выбор с полоской-акцентом, рамка при фокусе с клавиатуры
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -59,7 +60,7 @@
   </Style>
 
   <Style x:Key="MutedTextStyle" TargetType="TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource RsTextMutedBrush}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
@@ -469,6 +470,72 @@
     </Setter>
   </Style>
 
+  <!-- ===== Поля ввода =====
+       Системный Fluent-стиль рисует подчёркивание фокуса цветом системного акцента (у пользователя это синий) и не слушается переопределения
+       ключей; здесь — свой шаблон: подчёркивание берётся из фирменной палитры (RsFocusRingBrush), углы скруглены как у кнопок.
+       Применяется неявно ко всем TextBox, в том числе в диалогах и окне входа. -->
+
+  <Style TargetType="TextBox">
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="CaretBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+    <Setter Property="SelectionOpacity" Value="0.4" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="AllowDrop" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="TextBox">
+          <Border x:Name="Bd"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="6"
+                  SnapsToDevicePixels="True">
+            <Grid>
+              <ScrollViewer x:Name="PART_ContentHost"
+                            Padding="{TemplateBinding Padding}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            Focusable="False"
+                            HorizontalScrollBarVisibility="Hidden"
+                            VerticalScrollBarVisibility="Hidden" />
+              <Border x:Name="FocusLine"
+                      Height="2"
+                      VerticalAlignment="Bottom"
+                      CornerRadius="0,0,6,6"
+                      Background="{DynamicResource RsFocusRingBrush}"
+                      Visibility="Collapsed"
+                      IsHitTestVisible="False" />
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="FocusLine" Property="Visibility" Value="Visible" />
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorInputActiveBrush}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorDisabledBrush}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Индикатор выполнения: цвет берётся из фирменной палитры, а не из системного акцента Windows. -->
+  <Style TargetType="ProgressBar">
+    <Setter Property="Foreground" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+  </Style>
+
   <!-- ===== Списки ===== -->
 
   <Style x:Key="ListItemStyle" TargetType="ListBoxItem">
@@ -531,6 +598,55 @@
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
             </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ===== Вкладки-«чипы» ===== -->
+  <!-- Переключатель вкладок колонки «Компьютеры»: RadioButton, выбранная вкладка залита акцентной подложкой. -->
+  <Style x:Key="TabChipStyle" TargetType="RadioButton">
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Margin" Value="0,0,2,0" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Border x:Name="Bd"
+                  Background="Transparent"
+                  BorderBrush="Transparent"
+                  BorderThickness="1"
+                  CornerRadius="6"
+                  Padding="0"
+                  SnapsToDevicePixels="True">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+              <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RsAccentSubtleBrush}" />
+              <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+              <Setter Property="FontWeight" Value="SemiBold" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RsFocusRingBrush}" />
+            </Trigger>
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsChecked" Value="True" />
+                <Condition Property="IsKeyboardFocused" Value="True" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RsAccentSubtleHoverBrush}" />
+            </MultiTrigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>

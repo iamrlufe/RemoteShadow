@@ -8,9 +8,6 @@ namespace RemoteShadow.App.Pages;
 
 public partial class ComputersPage : UserControl, IFilterablePage
 {
-    /// <summary>Сколько места по высоте оставить списку компьютеров (и строкам «Показано N из M»), когда раскрыта панель.</summary>
-    private const double MinListHeight = 170;
-
     public ComputersPage()
     {
         InitializeComponent();
@@ -19,8 +16,8 @@ public partial class ComputersPage : UserControl, IFilterablePage
         ActionMenuBuilder.Attach(ComputerList, () => ViewModel?.BuildComputerMenu());
         ActionMenuBuilder.Attach(SessionList, () => ViewModel?.BuildSessionMenu());
 
-        SizeChanged += (_, _) => FitPanelsToHeight();
-        LeftPanel.SizeChanged += (_, _) => RefitOpenPanel();
+        TabList.IsChecked = true;
+        DataContextChanged += OnDataContextChanged;
     }
 
     private ComputersPageViewModel? ViewModel => DataContext as ComputersPageViewModel;
@@ -32,63 +29,41 @@ public partial class ComputersPage : UserControl, IFilterablePage
         FilterBox.SelectAll();
     }
 
-    // Открытые вместе панели вытесняют список компьютеров: раскрывается только одна.
-    private void OnFiltersExpanded(object sender, RoutedEventArgs e)
+    // ----- вкладки колонки ----------------------------------------------------------------------------------------
+
+    /// <summary>Колонка слева показывает одну вкладку целиком: список компьютеров или одну из панелей. Так панели не вытесняют список и не прокручиваются внутри прокрутки.</summary>
+    private void OnTabChecked(object sender, RoutedEventArgs e)
     {
-        GroupsExpander.IsExpanded = false;
-        DiscoveredExpander.IsExpanded = false;
-        FitPanelsToHeight();
+        if (sender is not RadioButton { Tag: string tag } || ComputerList is null) return;
+
+        ComputerList.Visibility = tag == "list" ? Visibility.Visible : Visibility.Collapsed;
+        GroupsScroll.Visibility = tag == "groups" ? Visibility.Visible : Visibility.Collapsed;
+        SubnetsScroll.Visibility = tag == "subnets" ? Visibility.Visible : Visibility.Collapsed;
+        FiltersScroll.Visibility = tag == "filters" ? Visibility.Visible : Visibility.Collapsed;
+        DiscoveredScroll.Visibility = tag == "found" ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void OnDiscoveredExpanded(object sender, RoutedEventArgs e)
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        GroupsExpander.IsExpanded = false;
-        FiltersExpander.IsExpanded = false;
-        FitPanelsToHeight();
+        if (e.OldValue is ComputersPageViewModel old) old.PropertyChanged -= OnViewModelPropertyChanged;
+        if (e.NewValue is ComputersPageViewModel vm) vm.PropertyChanged += OnViewModelPropertyChanged;
     }
 
-    private void OnGroupsExpanded(object sender, RoutedEventArgs e)
+    // Переход из поиска Ctrl+K или из «Избранного» выбирает компьютер: показываем список, где он выделен.
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        FiltersExpander.IsExpanded = false;
-        DiscoveredExpander.IsExpanded = false;
-        FitPanelsToHeight();
+        if (e.PropertyName == nameof(ComputersPageViewModel.SelectedComputer) && ViewModel?.SelectedComputer is not null && TabList.IsChecked != true)
+            TabList.IsChecked = true;
     }
 
-    private void OnCollapseFilters(object sender, RoutedEventArgs e) => FiltersExpander.IsExpanded = false;
-
-    private void OnCollapseGroups(object sender, RoutedEventArgs e) => GroupsExpander.IsExpanded = false;
-
-    /// <summary>
-    /// На невысоком окне раскрытая панель фильтров или групп (до 320 px) целиком вытесняла список компьютеров.
-    /// Высота панелей ограничивается так, чтобы списку оставалось хотя бы несколько строк.
-    /// </summary>
-    private void FitPanelsToHeight()
+    /// <summary>Вложенный список без собственной прокрутки не должен глотать колесо мыши: отдаём его объемлющей панели.</summary>
+    private void OnNestedListWheel(object sender, MouseWheelEventArgs e)
     {
-        if (!IsLoaded) return;
-        RefitOpenPanel();
-
-        // Раскрытие/сворачивание меняет раскладку уже после обработчика: повторяем, когда размеры устоятся.
-        Dispatcher.BeginInvoke(new Action(RefitOpenPanel), System.Windows.Threading.DispatcherPriority.Loaded);
-    }
-
-    private void RefitOpenPanel()
-    {
-        if (!IsLoaded) return;
-        FitPanel(GroupsExpander, GroupsScroll, 120, 280);
-        FitPanel(FiltersExpander, FiltersScroll, 120, 320);
-        FitPanel(DiscoveredExpander, DiscoveredScroll, 140, 360);
-    }
-
-    /// <summary>Высота раскрытой панели подбирается по месту, реально оставшемуся под списком компьютеров: список всегда виден.</summary>
-    private void FitPanel(Expander expander, ScrollViewer scroll, double min, double max)
-    {
-        if (!expander.IsExpanded || !expander.IsVisible) { scroll.MaxHeight = max; return; }
-
-        var listTop = ComputerList.TranslatePoint(new Point(0, 0), LeftPanel).Y;
-        var freeForList = LeftPanel.ActualHeight - listTop;
-        var target = scroll.ActualHeight + (freeForList - MinListHeight);
-        var clamped = Math.Clamp(target, min, max);
-        if (Math.Abs(scroll.MaxHeight - clamped) > 1) scroll.MaxHeight = clamped;
+        DependencyObject? d = sender as DependencyObject;
+        while (d is not null && d is not ScrollViewer) d = System.Windows.Media.VisualTreeHelper.GetParent(d);
+        if (d is not ScrollViewer scroll) return;
+        scroll.ScrollToVerticalOffset(scroll.VerticalOffset - e.Delta);
+        e.Handled = true;
     }
 
     // ----- поиск --------------------------------------------------------------------------------------------------

@@ -61,6 +61,22 @@ public sealed class ThemeService
     {
         var res = Application.Current.Resources;
         void Set(string key, string color) => res[key] = Frozen(color);
+        void SetColor(string key, string color) => res[key] = (Color)ColorConverter.ConvertFromString(color);
+
+        // Системные акцентные цвета: от них Fluent считает подчёркивание фокуса в полях, индикаторы выполнения и т. п.
+        string[] accent = dark
+            ? ["#818CF8", "#A5B4FC", "#6366F1", "#C7D2FE", "#A5B4FC", "#818CF8", "#4338CA", "#3730A3", "#312E81"]
+            : ["#4F46E5", "#4338CA", "#3730A3", "#818CF8", "#6366F1", "#4F46E5", "#4338CA", "#3730A3", "#312E81"];
+        SetColor("SystemAccentColor", accent[0]);
+        SetColor("SystemAccentColorPrimary", accent[0]);
+        SetColor("SystemAccentColorSecondary", accent[1]);
+        SetColor("SystemAccentColorTertiary", accent[2]);
+        SetColor("SystemAccentColorLight1", accent[3]);
+        SetColor("SystemAccentColorLight2", accent[4]);
+        SetColor("SystemAccentColorLight3", accent[5]);
+        SetColor("SystemAccentColorDark1", accent[6]);
+        SetColor("SystemAccentColorDark2", accent[7]);
+        SetColor("SystemAccentColorDark3", accent[8]);
 
         if (dark)
         {
@@ -76,6 +92,7 @@ public sealed class ThemeService
             Set("RsAccentSubtleBrush", "#26818CF8");
             Set("RsAccentSubtleHoverBrush", "#33818CF8");
             Set("RsFocusRingBrush", "#A5B4FC");
+            Set("RsTextMutedBrush", "#B4BAC8");
         }
         else
         {
@@ -91,6 +108,7 @@ public sealed class ThemeService
             Set("RsAccentSubtleBrush", "#1A4F46E5");
             Set("RsAccentSubtleHoverBrush", "#264F46E5");
             Set("RsFocusRingBrush", "#4F46E5");
+            Set("RsTextMutedBrush", "#4B5563");
         }
     }
 
