@@ -769,6 +769,10 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         Subnets.Add(subnet);
         NewSubnetName = string.Empty;
         NewSubnetCidr = string.Empty;
+
+        // Большие подсети сами не сканируются: для них нужно подтверждение, его даёт кнопка «Сканировать».
+        if (settings.AutoScanNewSubnet && newRange.UsableCount <= LargeScanWarningThreshold)
+            _ = ScanSubnetAsync(subnet);
     }
 
     [RelayCommand]

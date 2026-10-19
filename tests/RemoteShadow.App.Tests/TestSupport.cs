@@ -142,7 +142,8 @@ internal sealed class FakeAuditLog : IAuditLog
 /// <summary>Настройки в памяти — чтобы тесты не писали на диск.</summary>
 internal sealed class FakeSettingsStore : ISettingsStore
 {
-    private AppSettings _settings = new();
+    // Автоскан новой подсети в тестах выключен: сканы запускаются явно, чтобы не гоняться с фоновым.
+    private AppSettings _settings = new() { AutoScanNewSubnet = false };
 
     public AppSettings Load() => _settings;
     public void Save(AppSettings settings) => _settings = settings;

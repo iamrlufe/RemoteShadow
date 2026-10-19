@@ -93,6 +93,9 @@ public sealed class AppSettings
     /// <summary>Собирать сведения об устройствах, найденных сканированием, по WinRM сразу после скана.</summary>
     public bool AutoCollectDeviceInfo { get; set; } = true;
 
+    /// <summary>Сразу сканировать только что добавленную подсеть (если в ней не больше 1024 адресов).</summary>
+    public bool AutoScanNewSubnet { get; set; } = true;
+
     // ----- Группы, подсети, фильтры раздела «Компьютеры» --------------------------------------------------------
 
     public List<ComputerGroup> ComputerGroups { get; set; } = new();

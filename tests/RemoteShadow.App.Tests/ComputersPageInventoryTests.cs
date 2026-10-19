@@ -38,6 +38,22 @@ public class ComputersPageInventoryTests
     }
 
     [Fact]
+    public async Task Adding_a_small_subnet_scans_it_right_away()
+    {
+        var fixture = new DemoFixture();
+        var settings = fixture.Settings.Load();
+        settings.AutoScanNewSubnet = true;
+        fixture.Settings.Save(settings);
+        var inventory = new FakeInventory();
+        var vm = NewVm(fixture, inventory, ["10.70.0.1", "10.70.0.2"], out _);
+
+        await WaitUntilAsync(() => vm.DiscoveredDevices.Count == 2 && !vm.IsScanning);
+        await WaitUntilAsync(() => !vm.IsEnriching && inventory.Calls == 2);
+
+        Assert.All(vm.DiscoveredDevices, d => Assert.NotNull(d.EnrichedUtc));
+    }
+
+    [Fact]
     public async Task Auto_collection_can_be_switched_off()
     {
         var fixture = new DemoFixture();
