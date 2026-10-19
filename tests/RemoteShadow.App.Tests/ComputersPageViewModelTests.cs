@@ -14,7 +14,8 @@ public sealed class ComputersPageViewModelTests
     private static bool IsServer(ComputerInfo c) => c.OperatingSystem?.Contains("Server", StringComparison.OrdinalIgnoreCase) == true;
 
     private static ComputersPageViewModel CreateViewModel(DemoFixture fixture, IEnumerable<ComputerInfo> computers) =>
-        new(new FakeComputerIndex(computers), fixture.Sessions, fixture.Runner, fixture.Notifications);
+        new(new FakeComputerIndex(computers), fixture.Sessions, fixture.Runner, fixture.Notifications,
+            fixture.Settings, fixture.Availability, fixture.Scanner, fixture.DeviceMerge, fixture.Dialogs);
 
     [Fact]
     public void SelectingComputer_ShowsConnectionAndPowerButtons()

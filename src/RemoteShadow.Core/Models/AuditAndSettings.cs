@@ -62,4 +62,32 @@ public sealed class AppSettings
 
     /// <summary>System, Light или Dark.</summary>
     public string Theme { get; set; } = "System";
+
+    // ----- Многопротокольная доступность -----------------------------------------------------------------------
+
+    public int RdpPort { get; set; } = 3389;
+    public int SmbPort { get; set; } = 445;
+    public int SshPort { get; set; } = 22;
+
+    public bool CheckIcmp { get; set; } = true;
+    public bool CheckRdp { get; set; } = true;
+    public bool CheckSmb { get; set; } = true;
+    public bool CheckSsh { get; set; }
+
+    /// <summary>Таймаут одного протокола, мс. Общий для ICMP/RDP/SMB/SSH (отдельные тайм-ауты не нужны: опрос дешёвый).</summary>
+    public int AvailabilityProbeTimeoutMs { get; set; } = 500;
+
+    /// <summary>Сколько компьютеров проверяется одновременно при многопротокольном опросе.</summary>
+    public int AvailabilityParallelism { get; set; } = 32;
+
+    /// <summary>Как часто можно переопрашивать уже проверенный компьютер автоматически, минуты. 0 — только вручную.</summary>
+    public int AvailabilityAutoRefreshMinutes { get; set; }
+
+    // ----- Группы, подсети, фильтры раздела «Компьютеры» --------------------------------------------------------
+
+    public List<ComputerGroup> ComputerGroups { get; set; } = new();
+
+    public List<SubnetDefinition> Subnets { get; set; } = new();
+
+    public ComputersFilterState ComputersFilter { get; set; } = new();
 }

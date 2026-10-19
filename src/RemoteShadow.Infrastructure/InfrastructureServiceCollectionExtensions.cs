@@ -27,6 +27,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.TryAddSingleton<IUserLocator, UserLocator>();
         services.TryAddSingleton<IActionRunner, ActionRunner>();
 
+        services.TryAddSingleton<IDnsResolverService, DnsResolverService>();
+        services.TryAddSingleton<IReverseDnsResolver, ReverseDnsResolver>();
+        services.TryAddSingleton<IComputerAvailabilityService, ComputerAvailabilityService>();
+        services.TryAddSingleton<ISubnetScanner, SubnetScanner>();
+        services.TryAddSingleton<IDeviceMergeService, DeviceMergeService>();
+
         return services;
     }
 }

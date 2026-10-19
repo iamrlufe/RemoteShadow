@@ -113,6 +113,9 @@ public sealed class JsonSettingsStore : ISettingsStore
     {
         settings.FavoriteComputers ??= new List<Guid>();
         settings.RecentComputers ??= new List<Guid>();
+        settings.ComputerGroups ??= new List<ComputerGroup>();
+        settings.Subnets ??= new List<SubnetDefinition>();
+        settings.ComputersFilter ??= new ComputersFilterState();
         return settings;
     }
 

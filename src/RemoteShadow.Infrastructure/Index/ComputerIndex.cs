@@ -222,6 +222,42 @@ public sealed class ComputerIndex : IComputerIndex, IDisposable
         RaiseChangedThrottled();
     }
 
+    public void SetAvailability(
+        Guid id,
+        bool isChecking,
+        bool? online = null,
+        bool? rdp = null,
+        bool? smb = null,
+        bool? ssh = null,
+        bool? icmp = null,
+        DateTime? checkedAtUtc = null)
+    {
+        lock (_writeLock)
+        {
+            var snapshot = _snapshot;
+            if (!snapshot.TryGetIndex(id, out var index)) return;
+
+            snapshot.Entries[index].SetAvailability(isChecking, online, rdp, smb, ssh, icmp, checkedAtUtc);
+        }
+
+        RaiseChangedThrottled();
+    }
+
+    public void SetIpAddresses(Guid id, IReadOnlyList<string> addresses)
+    {
+        ArgumentNullException.ThrowIfNull(addresses);
+
+        lock (_writeLock)
+        {
+            var snapshot = _snapshot;
+            if (!snapshot.TryGetIndex(id, out var index)) return;
+
+            snapshot.Entries[index].SetIpAddresses(addresses);
+        }
+
+        RaiseChangedThrottled();
+    }
+
     /// <summary>
     /// Очищает данные и метки синхронизации (кэш на диске остаётся). Идущее обновление прерывается и ничего не публикует.
     /// Таймеры продолжают работать: после нового входа обновление пойдёт само (а <see cref="InitializeAsync"/> можно вызвать повторно).
@@ -431,10 +467,18 @@ public sealed class ComputerIndex : IComputerIndex, IDisposable
                 {
                     var current = snapshot.Entries[index].Info;
 
-                    // Статус «в сети» приходит не из AD — переживает обновление.
-                    var merged = raw.IsOnline is null && current.IsOnline is not null
-                        ? raw with { IsOnline = current.IsOnline }
-                        : raw;
+                    // Статус «в сети» и доступность по протоколам приходят не из AD — переживают обновление.
+                    var merged = raw with
+                    {
+                        IsOnline = raw.IsOnline ?? current.IsOnline,
+                        IpAddresses = raw.IpAddresses ?? current.IpAddresses,
+                        RdpAvailable = raw.RdpAvailable ?? current.RdpAvailable,
+                        SmbAvailable = raw.SmbAvailable ?? current.SmbAvailable,
+                        SshAvailable = raw.SshAvailable ?? current.SshAvailable,
+                        IcmpAvailable = raw.IcmpAvailable ?? current.IcmpAvailable,
+                        LastCheckedUtc = raw.LastCheckedUtc ?? current.LastCheckedUtc,
+                        IsChecking = raw.IsChecking || current.IsChecking,
+                    };
 
                     if (merged == current) continue;
                     (replaced ??= new Dictionary<int, ComputerEntry>())[index] = new ComputerEntry(merged);

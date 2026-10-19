@@ -33,6 +33,24 @@ public interface IComputerIndex
     /// <summary>Подставляет результат проверки «в сети». Вызывает <see cref="IOnlineStatusService"/>.</summary>
     void SetOnline(Guid id, bool? online);
 
+    /// <summary>
+    /// Подставляет результат многопротокольной проверки (<see cref="IComputerAvailabilityService"/>): флаги по
+    /// протоколам, общий «в сети» и время проверки. isChecking=true и остальные параметры null — отметка «идёт
+    /// проверка прямо сейчас», которую нужно выставить до начала опроса конкретного компьютера.
+    /// </summary>
+    void SetAvailability(
+        Guid id,
+        bool isChecking,
+        bool? online = null,
+        bool? rdp = null,
+        bool? smb = null,
+        bool? ssh = null,
+        bool? icmp = null,
+        DateTime? checkedAtUtc = null);
+
+    /// <summary>Подставляет IP-адреса, полученные DNS-резолвингом (<see cref="IDnsResolverService"/>).</summary>
+    void SetIpAddresses(Guid id, IReadOnlyList<string> addresses);
+
     /// <summary>Сбрасывает данные (при смене учётной записи или домена).</summary>
     void Clear();
 }

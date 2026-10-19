@@ -45,6 +45,20 @@ public static class DemoServiceCollectionExtensions
         services.AddSingleton(sp => new DemoHostProbe(sp.GetRequiredService<DemoData>(), sp.GetRequiredService<DemoTimings>()));
         services.AddSingleton<IHostProbe>(sp => sp.GetRequiredService<DemoHostProbe>());
 
+        services.AddSingleton(_ => new DemoNetworkMap());
+        services.AddSingleton(sp => new DemoIcmpProbe(sp.GetRequiredService<DemoData>(), sp.GetRequiredService<DemoNetworkMap>(), sp.GetRequiredService<DemoTimings>()));
+        services.AddSingleton<IIcmpProbe>(sp => sp.GetRequiredService<DemoIcmpProbe>());
+
+        services.AddSingleton(sp => new DemoDnsResolverService(sp.GetRequiredService<DemoData>(), sp.GetRequiredService<DemoNetworkMap>(), sp.GetRequiredService<DemoTimings>()));
+        services.AddSingleton<IDnsResolverService>(sp => sp.GetRequiredService<DemoDnsResolverService>());
+
+        services.AddSingleton(sp => new DemoReverseDnsResolver(sp.GetRequiredService<DemoNetworkMap>(), sp.GetRequiredService<DemoTimings>()));
+        services.AddSingleton<IReverseDnsResolver>(sp => sp.GetRequiredService<DemoReverseDnsResolver>());
+
+        services.AddSingleton(sp => new DemoSubnetScanner(
+            sp.GetRequiredService<DemoData>(), sp.GetRequiredService<DemoNetworkMap>(), sp.GetService<TimeProvider>() ?? TimeProvider.System, sp.GetRequiredService<DemoTimings>()));
+        services.AddSingleton<ISubnetScanner>(sp => sp.GetRequiredService<DemoSubnetScanner>());
+
         services.AddSingleton(_ => new DemoProcessLauncher());
         services.AddSingleton<IProcessLauncher>(sp => sp.GetRequiredService<DemoProcessLauncher>());
 

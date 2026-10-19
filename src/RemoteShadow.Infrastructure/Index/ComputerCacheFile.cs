@@ -75,6 +75,10 @@ internal sealed class CachedComputer
     public DateTime? WhenChanged { get; set; }
     public bool Enabled { get; set; } = true;
 
+    // Доступность не кэшируется между запусками намеренно (кроме списка адресов): статус должен быть актуальным,
+    // а не унаследованным из предыдущего сеанса. IP-адреса кэшируются — они не меняются часто и ускоряют повторный показ.
+    public List<string>? IpAddresses { get; set; }
+
     public static CachedComputer From(ComputerInfo info) => new()
     {
         Id = info.Id,
@@ -87,6 +91,7 @@ internal sealed class CachedComputer
         LastLogon = info.LastLogon,
         WhenChanged = info.WhenChanged,
         Enabled = info.Enabled,
+        IpAddresses = info.IpAddresses?.ToList(),
     };
 
     public ComputerInfo ToInfo() => new()
@@ -101,6 +106,7 @@ internal sealed class CachedComputer
         LastLogon = LastLogon,
         WhenChanged = WhenChanged,
         Enabled = Enabled,
+        IpAddresses = IpAddresses,
     };
 
     /// <summary>Запись без имени или DN повреждена — такой компьютер в индекс не берём.</summary>

@@ -108,6 +108,9 @@ public sealed class FakeHostProbe : IHostProbe
     /// <summary>Таймаут, с которым вызывали проверку, по порядку вызовов.</summary>
     public ConcurrentQueue<TimeSpan> Timeouts { get; } = new();
 
+    /// <summary>Порты, с которыми вызывали <see cref="IsPortOpenAsync"/> (IsOnlineAsync пишет сюда 445).</summary>
+    public ConcurrentQueue<int> Ports { get; } = new();
+
     public Func<string, bool> Online { get; set; } = _ => true;
 
     /// <summary>Выполняется внутри проверки, до ответа. Здесь тест может держать проверку открытой.</summary>
@@ -120,8 +123,11 @@ public sealed class FakeHostProbe : IHostProbe
     /// <summary>Сколько вызовов выполняется прямо сейчас.</summary>
     public int Active => Volatile.Read(ref _current);
 
-    public Task<bool> IsPortOpenAsync(string host, int port, TimeSpan timeout, CancellationToken ct) =>
-        IsOnlineAsync(host, timeout, ct);
+    public Task<bool> IsPortOpenAsync(string host, int port, TimeSpan timeout, CancellationToken ct)
+    {
+        Ports.Enqueue(port);
+        return IsOnlineAsync(host, timeout, ct);
+    }
 
     public async Task<bool> IsOnlineAsync(string host, TimeSpan timeout, CancellationToken ct)
     {
@@ -404,12 +410,71 @@ public sealed class FakeComputerIndex : IComputerIndex
         OnSetOnline?.Invoke(id, online);
     }
 
+    public void SetAvailability(
+        Guid id, bool isChecking, bool? online = null, bool? rdp = null, bool? smb = null, bool? ssh = null,
+        bool? icmp = null, DateTime? checkedAtUtc = null)
+    {
+        lock (_gate)
+        {
+            var i = _computers.FindIndex(c => c.Id == id);
+            if (i < 0) return;
+            var current = _computers[i];
+            _computers[i] = current with
+            {
+                IsChecking = isChecking,
+                IsOnline = isChecking ? current.IsOnline : online,
+                RdpAvailable = isChecking ? current.RdpAvailable : rdp,
+                SmbAvailable = isChecking ? current.SmbAvailable : smb,
+                SshAvailable = isChecking ? current.SshAvailable : ssh,
+                IcmpAvailable = isChecking ? current.IcmpAvailable : icmp,
+                LastCheckedUtc = isChecking ? current.LastCheckedUtc : checkedAtUtc ?? current.LastCheckedUtc,
+            };
+        }
+    }
+
+    public void SetIpAddresses(Guid id, IReadOnlyList<string> addresses)
+    {
+        lock (_gate)
+        {
+            var i = _computers.FindIndex(c => c.Id == id);
+            if (i >= 0) _computers[i] = _computers[i] with { IpAddresses = addresses };
+        }
+    }
+
     public void Clear()
     {
         lock (_gate)
         {
             _computers.Clear();
         }
+    }
+}
+
+/// <summary>Фейковый ICMP-пробер: по умолчанию отвечает true, настраивается как и <see cref="FakeHostProbe"/>.</summary>
+public sealed class FakeIcmpProbe : IIcmpProbe
+{
+    public ConcurrentQueue<string> Calls { get; } = new();
+    public Func<string, bool> Online { get; set; } = _ => true;
+    public HashSet<string> Throwing { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public Task<bool> PingAsync(string hostOrIp, TimeSpan timeout, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        Calls.Enqueue(hostOrIp);
+        if (Throwing.Contains(hostOrIp)) throw new InvalidOperationException("Фейковый сбой ping.");
+        return Task.FromResult(Online(hostOrIp));
+    }
+}
+
+/// <summary>Фейковый обратный DNS: отдаёт имя по словарю IP→имя, иначе null (как «нет PTR-записи»).</summary>
+public sealed class FakeReverseDnsResolver : IReverseDnsResolver
+{
+    public Dictionary<string, string?> Names { get; } = new();
+
+    public Task<string?> ResolveAsync(string ipAddress, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        return Task.FromResult(Names.GetValueOrDefault(ipAddress));
     }
 }
 

@@ -74,6 +74,7 @@ public class ServiceRegistrationTests
         services.AddSingleton<IUserDirectory>(new FakeUserDirectory());
         services.AddSingleton<ISessionService>(new FakeSessionService());
         services.AddSingleton<IHostProbe>(new FakeHostProbe());
+        services.AddSingleton<IIcmpProbe>(new FakeIcmpProbe());
         services.AddSingleton<IDialogService>(new FakeDialogService());
         services.AddSingleton<ICurrentConnection>(FakeCurrentConnection.LoggedIn());
         services.AddSingleton(new AppPaths(temp.Path));
@@ -89,6 +90,11 @@ public class ServiceRegistrationTests
     [InlineData(typeof(IOnlineStatusService), typeof(OnlineStatusService))]
     [InlineData(typeof(IUserLocator), typeof(UserLocator))]
     [InlineData(typeof(IActionRunner), typeof(ActionRunner))]
+    [InlineData(typeof(IDnsResolverService), typeof(DnsResolverService))]
+    [InlineData(typeof(IReverseDnsResolver), typeof(ReverseDnsResolver))]
+    [InlineData(typeof(IComputerAvailabilityService), typeof(ComputerAvailabilityService))]
+    [InlineData(typeof(ISubnetScanner), typeof(SubnetScanner))]
+    [InlineData(typeof(IDeviceMergeService), typeof(DeviceMergeService))]
     public void Core_services_are_registered_as_singletons(Type service, Type implementation)
     {
         var services = new ServiceCollection().AddRemoteShadowInfrastructure();
@@ -119,6 +125,7 @@ public class ServiceRegistrationTests
                      typeof(ICurrentConnection), typeof(IDomainConnection), typeof(IDomainLogonService), typeof(ICredentialStore),
                      typeof(IComputerDirectory), typeof(IUserDirectory), typeof(ISessionService), typeof(IHostProbe),
                      typeof(IProcessLauncher), typeof(IDialogService), typeof(INotificationService), typeof(IDiagnosticsService),
+                     typeof(IIcmpProbe),
                  })
         {
             Assert.DoesNotContain(services, d => d.ServiceType == type);
@@ -162,6 +169,8 @@ public class ServiceRegistrationTests
                  {
                      typeof(ISettingsStore), typeof(IAuditLog), typeof(ISessionCache), typeof(IComputerIndex),
                      typeof(IOnlineStatusService), typeof(IUserLocator), typeof(IActionRunner),
+                     typeof(IDnsResolverService), typeof(IReverseDnsResolver), typeof(IComputerAvailabilityService),
+                     typeof(ISubnetScanner), typeof(IDeviceMergeService),
                  })
         {
             var first = container.GetService(type);

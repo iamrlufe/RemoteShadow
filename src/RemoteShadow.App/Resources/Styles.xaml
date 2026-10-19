@@ -374,6 +374,9 @@
         <Setter Property="Fill" Value="Transparent" />
         <Setter Property="Stroke" Value="{DynamicResource TextFillColorTertiaryBrush}" />
       </Trigger>
+      <Trigger Property="Tag" Value="checking">
+        <Setter Property="Fill" Value="{DynamicResource SystemFillColorCautionBrush}" />
+      </Trigger>
     </Style.Triggers>
   </Style>
 

@@ -133,7 +133,17 @@ public partial class App : Application
     {
         try
         {
-            return services.GetRequiredService<ISettingsStore>().Load();
+            var settings = services.GetRequiredService<ISettingsStore>().Load();
+
+            // Демо-режим: наполняем избранное/группы/подсети демо-данными, чтобы фичу можно было увидеть сразу,
+            // без ручной настройки (только если пользователь ещё ничего не настроил в этой демо-сессии).
+            if (services.GetService<DemoData>() is { } demoData)
+            {
+                DemoSettingsSeeding.SeedIfEmpty(settings, demoData);
+                services.GetRequiredService<ISettingsStore>().Save(settings);
+            }
+
+            return settings;
         }
         catch (Exception ex)
         {

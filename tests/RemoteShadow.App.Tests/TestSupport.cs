@@ -40,6 +40,31 @@ internal sealed class FakeComputerIndex : IComputerIndex
         if (index >= 0) _computers[index] = _computers[index] with { IsOnline = online };
     }
 
+    public void SetAvailability(
+        Guid id, bool isChecking, bool? online = null, bool? rdp = null, bool? smb = null, bool? ssh = null,
+        bool? icmp = null, DateTime? checkedAtUtc = null)
+    {
+        var index = _computers.FindIndex(c => c.Id == id);
+        if (index < 0) return;
+        var current = _computers[index];
+        _computers[index] = current with
+        {
+            IsChecking = isChecking,
+            IsOnline = isChecking ? current.IsOnline : online,
+            RdpAvailable = isChecking ? current.RdpAvailable : rdp,
+            SmbAvailable = isChecking ? current.SmbAvailable : smb,
+            SshAvailable = isChecking ? current.SshAvailable : ssh,
+            IcmpAvailable = isChecking ? current.IcmpAvailable : icmp,
+            LastCheckedUtc = isChecking ? current.LastCheckedUtc : checkedAtUtc ?? current.LastCheckedUtc,
+        };
+    }
+
+    public void SetIpAddresses(Guid id, IReadOnlyList<string> addresses)
+    {
+        var index = _computers.FindIndex(c => c.Id == id);
+        if (index >= 0) _computers[index] = _computers[index] with { IpAddresses = addresses };
+    }
+
     public void Clear() => _computers.Clear();
 }
 

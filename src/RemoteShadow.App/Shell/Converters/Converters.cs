@@ -166,6 +166,40 @@ public sealed class SessionStateTextConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>
+/// <see cref="AvailabilityStatus"/> → «online»/«offline»/«checking»/«unknown» — значение <c>Tag</c> для
+/// <c>StatusDotStyle</c> (зелёный/красный/жёлтый/серый).
+/// </summary>
+[ValueConversion(typeof(AvailabilityStatus), typeof(string))]
+public sealed class AvailabilityStatusConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value switch
+    {
+        AvailabilityStatus.Online => "online",
+        AvailabilityStatus.Offline => "offline",
+        AvailabilityStatus.Checking => "checking",
+        _ => "unknown",
+    };
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>bool? → «есть» / «нет» / «?» — для колонок RDP/SMB/SSH в таблице компьютеров.</summary>
+[ValueConversion(typeof(bool?), typeof(string))]
+public sealed class ProtocolAvailabilityTextConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value switch
+    {
+        true => "✓",
+        false => "✕",
+        _ => "?",
+    };
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Кисти и стили по <see cref="StatusTone"/>: из ресурсов приложения, а если их нет — запасные цвета.</summary>
 internal static class ToneResources
 {

@@ -21,14 +21,56 @@ public sealed record ComputerInfo
 
     public bool Enabled { get; init; } = true;
 
-    /// <summary>null — ещё не проверяли.</summary>
+    /// <summary>null — ещё не проверяли. Общий статус «в сети»: true, если ответил хотя бы один включённый протокол.</summary>
     public bool? IsOnline { get; init; }
+
+    /// <summary>IP-адреса компьютера (DNS A-записи по <see cref="HostName"/>). null/пусто — ещё не резолвили или не нашли.</summary>
+    public IReadOnlyList<string>? IpAddresses { get; init; }
+
+    /// <summary>null — не проверяли этот протокол (см. настройки «какие протоколы включены»).</summary>
+    public bool? RdpAvailable { get; init; }
+
+    public bool? SmbAvailable { get; init; }
+
+    public bool? SshAvailable { get; init; }
+
+    public bool? IcmpAvailable { get; init; }
+
+    /// <summary>Когда последний раз проверялась доступность (UTC). null — ни разу.</summary>
+    public DateTime? LastCheckedUtc { get; init; }
+
+    /// <summary>true — проверка доступности выполняется прямо сейчас (для статуса «Checking» в UI).</summary>
+    public bool IsChecking { get; init; }
+
+    /// <summary>
+    /// Статус для UI: Checking, пока идёт проверка; Unknown, если проверок ещё не было; иначе Online/Offline
+    /// по <see cref="IsOnline"/>.
+    /// </summary>
+    public AvailabilityStatus AvailabilityStatus => IsChecking
+        ? AvailabilityStatus.Checking
+        : IsOnline switch { true => AvailabilityStatus.Online, false => AvailabilityStatus.Offline, null => AvailabilityStatus.Unknown };
 
     /// <summary>Имя для подключения: полное DNS-имя (нужно для Kerberos), иначе короткое.</summary>
     public string HostName => string.IsNullOrWhiteSpace(DnsName) ? Name : DnsName;
 
     /// <summary>DN подразделения или контейнера, в котором лежит компьютер.</summary>
     public string ParentDn => Dn.Parent(DistinguishedName);
+}
+
+/// <summary>Статус доступности компьютера/устройства для UI (цвет: зелёный/красный/жёлтый/серый).</summary>
+public enum AvailabilityStatus
+{
+    /// <summary>Серый — проверок ещё не было.</summary>
+    Unknown,
+
+    /// <summary>Жёлтый — проверка идёт прямо сейчас.</summary>
+    Checking,
+
+    /// <summary>Зелёный — ответил хотя бы один включённый протокол.</summary>
+    Online,
+
+    /// <summary>Красный — ни один включённый протокол не ответил.</summary>
+    Offline,
 }
 
 /// <summary>Узел дерева подразделений (OU или контейнер).</summary>

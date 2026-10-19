@@ -17,5 +17,7 @@
   <conv:StatusToBadgeStyleConverter x:Key="StatusToBadgeStyleConverter" />
   <conv:OnlineStatusConverter x:Key="OnlineStatusConverter" />
   <conv:SessionStateTextConverter x:Key="SessionStateTextConverter" />
+  <conv:AvailabilityStatusConverter x:Key="AvailabilityStatusConverter" />
+  <conv:ProtocolAvailabilityTextConverter x:Key="ProtocolAvailabilityTextConverter" />
 
 </ResourceDictionary>

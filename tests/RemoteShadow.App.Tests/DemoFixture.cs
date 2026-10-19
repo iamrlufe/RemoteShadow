@@ -44,4 +44,21 @@ internal sealed class DemoFixture
     public ISessionService Sessions => Provider.GetRequiredService<ISessionService>();
     public IUserDirectory Users => Provider.GetRequiredService<IUserDirectory>();
     public IDiagnosticsService Diagnostics => Provider.GetRequiredService<IDiagnosticsService>();
+    public ISettingsStore Settings => Provider.GetRequiredService<ISettingsStore>();
+    public IComputerAvailabilityService Availability => Provider.GetRequiredService<IComputerAvailabilityService>();
+    public ISubnetScanner Scanner => Provider.GetRequiredService<ISubnetScanner>();
+    public IDeviceMergeService DeviceMerge => Provider.GetRequiredService<IDeviceMergeService>();
+    public IComputerIndex Index => Provider.GetRequiredService<IComputerIndex>();
+
+    /// <summary>
+    /// Индекс, реально загруженный из демо-каталога (а не фейк) — нужен для тестов доступности/сканирования,
+    /// где <see cref="IComputerAvailabilityService"/> и <see cref="IDeviceMergeService"/> должны видеть те же записи,
+    /// что и ViewModel.
+    /// </summary>
+    public async Task<IComputerIndex> GetLoadedIndexAsync()
+    {
+        var index = Index;
+        await index.RefreshAsync(full: true, CancellationToken.None);
+        return index;
+    }
 }

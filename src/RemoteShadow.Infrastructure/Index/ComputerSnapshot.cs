@@ -32,6 +32,26 @@ internal sealed class ComputerEntry
 
     /// <summary>Подставляет статус «в сети». Вызывать только под блокировкой записи индекса.</summary>
     public void SetOnline(bool? online) => Volatile.Write(ref _info, _info with { IsOnline = online });
+
+    /// <summary>Подставляет результат многопротокольной проверки. Вызывать только под блокировкой записи индекса.</summary>
+    public void SetAvailability(
+        bool isChecking, bool? online, bool? rdp, bool? smb, bool? ssh, bool? icmp, DateTime? checkedAtUtc)
+    {
+        var current = _info;
+        Volatile.Write(ref _info, current with
+        {
+            IsChecking = isChecking,
+            IsOnline = isChecking ? current.IsOnline : online,
+            RdpAvailable = isChecking ? current.RdpAvailable : rdp,
+            SmbAvailable = isChecking ? current.SmbAvailable : smb,
+            SshAvailable = isChecking ? current.SshAvailable : ssh,
+            IcmpAvailable = isChecking ? current.IcmpAvailable : icmp,
+            LastCheckedUtc = isChecking ? current.LastCheckedUtc : checkedAtUtc ?? current.LastCheckedUtc,
+        });
+    }
+
+    /// <summary>Подставляет IP-адреса. Вызывать только под блокировкой записи индекса.</summary>
+    public void SetIpAddresses(IReadOnlyList<string> addresses) => Volatile.Write(ref _info, _info with { IpAddresses = addresses });
 }
 
 /// <summary>Компьютеры одного подразделения: индексы в <see cref="ComputerSnapshot.Entries"/> по возрастанию, то есть по имени.</summary>
