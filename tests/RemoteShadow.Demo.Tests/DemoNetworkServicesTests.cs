@@ -93,6 +93,37 @@ public class DemoNetworkServicesTests
     }
 
     [Fact]
+    public async Task Subnet_scan_survives_a_computer_removed_after_its_ip_was_assigned()
+    {
+        var data = TestSupport.Data();
+        var map = new DemoNetworkMap();
+        var dns = new DemoDnsResolverService(data, map, DemoTimings.Instant);
+        var online = TestSupport.OnlineWorkstation(data);
+        var ip = (await dns.ResolveAsync(online.HostName, CancellationToken.None)).Single();
+        Assert.True(new DemoComputerDirectory(data, DemoTimings.Instant).Remove(online.Id));
+
+        var scanner = new DemoSubnetScanner(data, map, TimeProvider.System, DemoTimings.Instant);
+        var subnet = new SubnetDefinition { Name = "Test", Cidr = ip + "/32", ProbeKind = ProbeKind.Both };
+
+        var found = await scanner.ScanAsync(subnet, null, CancellationToken.None).ToListAsync();
+
+        Assert.Empty(found); // компьютера больше нет — его адрес не отвечает
+    }
+
+    [Fact]
+    public void Concurrent_requests_for_one_host_get_one_address()
+    {
+        var map = new DemoNetworkMap();
+
+        var ips = new System.Collections.Concurrent.ConcurrentBag<string>();
+        Parallel.For(0, 64, _ => ips.Add(map.IpFor("PC-RACE.corp.local")));
+
+        var ip = Assert.Single(ips.Distinct());
+        Assert.Equal("PC-RACE.corp.local", map.HostFor(ip));
+        Assert.Equal(ip, map.IpFor("pc-race.corp.local"));
+    }
+
+    [Fact]
     public async Task Subnet_scan_results_are_deterministic_for_the_same_subnet()
     {
         var data = TestSupport.Data();

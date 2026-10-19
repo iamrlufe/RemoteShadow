@@ -122,13 +122,29 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _indexIsError;
 
-    /// <summary>Открывает первую страницу (предпочтительно «Компьютеры»). Вызывается, когда окно уже показано.</summary>
-    public void Initialize()
+    /// <summary>
+    /// Открывает раздел, на котором закончили в прошлый раз (<paramref name="lastPageId"/>), а если его нет — первую
+    /// страницу (предпочтительно «Компьютеры»). Вызывается, когда окно уже показано.
+    /// </summary>
+    public void Initialize(string? lastPageId = null)
     {
         if (_navigation.CurrentPageId is not null || _navigation.Pages.Count == 0) return;
 
-        var first = _navigation.Pages.FirstOrDefault(p => p.Page.Id == PageIds.Computers) ?? _navigation.Pages[0];
+        var first = _navigation.Pages.FirstOrDefault(p => string.Equals(p.Page.Id, lastPageId, StringComparison.OrdinalIgnoreCase))
+                    ?? _navigation.Pages.FirstOrDefault(p => p.Page.Id == PageIds.Computers)
+                    ?? _navigation.Pages[0];
         _navigation.NavigateTo(first.Page.Id);
+    }
+
+    /// <summary>Id открытого раздела — запоминается при закрытии окна.</summary>
+    public string? CurrentPageId => _navigation.CurrentPageId;
+
+    /// <summary>Ctrl+1…Ctrl+9: открыть раздел по номеру в навигации.</summary>
+    [RelayCommand]
+    private void OpenPageByNumber(string? number)
+    {
+        if (!int.TryParse(number, out var n) || n < 1 || n > NavItems.Count) return;
+        SelectedNavItem = NavItems[n - 1];
     }
 
     /// <summary>«Сменить учётную запись…»: окно входа поверх главного; при успехе страницы перезагрузятся по событию подключения.</summary>

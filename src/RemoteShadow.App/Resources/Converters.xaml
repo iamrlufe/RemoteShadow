@@ -20,5 +20,9 @@
   <conv:AvailabilityStatusConverter x:Key="AvailabilityStatusConverter" />
   <conv:ProtocolAvailabilityTextConverter x:Key="ProtocolAvailabilityTextConverter" />
   <conv:FavoriteButtonTextConverter x:Key="FavoriteButtonTextConverter" />
+  <conv:AnyTrueToVisibilityConverter x:Key="AnyTrueToVisibilityConverter" />
+  <conv:BoolToTextConverter x:Key="BoolToTextConverter" />
+  <conv:NotNullToBoolConverter x:Key="NotNullToBoolConverter" />
+  <conv:EmptyLoadedToVisibilityConverter x:Key="EmptyLoadedToVisibilityConverter" />
 
 </ResourceDictionary>

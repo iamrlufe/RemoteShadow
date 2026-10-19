@@ -26,11 +26,15 @@ internal sealed class LdapSession : IDisposable
         catch (OperationCanceledException)
         {
             // Подключение ещё открывается: закроем его, когда откроется.
+            // Ошибку открытия тоже забираем: иначе она всплыла бы как необработанная ошибка фоновой задачи.
             _ = open.ContinueWith(
                 t =>
                 {
                     if (t.IsCompletedSuccessfully) t.Result.Dispose();
+                    else _ = t.Exception;
                 },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
             throw;
         }
@@ -41,6 +45,14 @@ internal sealed class LdapSession : IDisposable
         ct.ThrowIfCancellationRequested();
         var task = Task.Run(() => work(_ldap), CancellationToken.None);
         _pending = task;
+
+        // Если вызывающий перестал ждать (отмена), ошибку брошенного вызова никто не прочитает:
+        // забираем её сами, иначе она дойдёт до TaskScheduler.UnobservedTaskException и окна ошибки.
+        _ = task.ContinueWith(
+            static t => _ = t.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
         return task.WaitAsync(ct);
     }
 

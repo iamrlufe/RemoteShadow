@@ -12,9 +12,10 @@
   </UserControl.Resources>
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="380" />
+      <!-- Список занимает 2/5 ширины (300–440): на узком окне карточке компьютера остаётся место. -->
+      <ColumnDefinition Width="2*" MinWidth="300" MaxWidth="440" />
       <ColumnDefinition Width="Auto" />
-      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="3*" />
     </Grid.ColumnDefinitions>
 
     <!-- ===== Список компьютеров: дерево категорий, фильтры, поиск, таблица ===== -->
@@ -24,18 +25,78 @@
       <!-- Главные действия всегда на виду: обновить список из AD, перепроверить доступность, избранное -->
       <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
         <Button Content="Обновить список" Command="{Binding RefreshListCommand}" Margin="0,0,4,4"
-                ToolTip="Заново загрузить все компьютеры из AD (новые, переименованные, включённые или отключённые в каталоге). Доступность не проверяет."
+                ToolTip="Заново загрузить все компьютеры из AD (новые, переименованные, включённые или отключённые в каталоге). Доступность не проверяет. Ctrl+F5"
                 AutomationProperties.Name="Обновить список" />
         <Button Content="Обновить статусы" Command="{Binding RefreshVisibleAvailabilityCommand}" Margin="0,0,4,4"
-                ToolTip="Повторно проверить DNS, ping, RDP, SMB и SSH для компьютеров текущей области (поиск, группа, подразделение). Фильтры по доступности, протоколам и IP при выборе области не учитываются, поэтому ранее выключенный компьютер будет проверен снова."
+                ToolTip="Повторно проверить DNS, ping, RDP, SMB и SSH для компьютеров текущей области (поиск, группа, подразделение). Фильтры по доступности, протоколам и IP при выборе области не учитываются, поэтому ранее выключенный компьютер будет проверен снова. F5"
                 AutomationProperties.Name="Обновить статусы" />
         <CheckBox Content="★ Только избранные" IsChecked="{Binding OnlyFavorites}" VerticalAlignment="Center" Margin="4,0,8,4"
                   AutomationProperties.Name="Только избранные" />
-        <Button Content="{Binding IsSelectedFavorite, Converter={StaticResource FavoriteButtonTextConverter}}"
-                Command="{Binding ToggleFavoriteCommand}" CommandParameter="{Binding SelectedComputer}" Margin="0,0,0,4"
-                Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}"
-                AutomationProperties.Name="Избранное" />
       </WrapPanel>
+
+      <!-- Идёт загрузка списка из AD или проверка статусов -->
+      <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+        <Grid.Visibility>
+          <MultiBinding Converter="{StaticResource AnyTrueToVisibilityConverter}">
+            <Binding Path="IsRefreshingList" />
+            <Binding Path="IsCheckingAvailability" />
+          </MultiBinding>
+        </Grid.Visibility>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center">
+          <ProgressBar IsIndeterminate="True" Height="3" AutomationProperties.Name="Идёт обновление" />
+          <TextBlock Margin="0,4,0,0" Style="{StaticResource CaptionMutedTextStyle}"
+                     Text="{Binding IsRefreshingList, Converter={StaticResource BoolToTextConverter}, ConverterParameter='Загрузка списка из AD…|Проверка статусов…'}" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="Отменить" Margin="8,0,0,0"
+                Command="{Binding CancelAvailabilityRefreshCommand}"
+                Visibility="{Binding IsCheckingAvailability, Converter={StaticResource BoolToVisibilityConverter}}"
+                AutomationProperties.Name="Отменить проверку статусов" />
+      </Grid>
+
+      <!-- «Найти пользователя на компьютерах» (из поиска Ctrl+K): где сейчас работает пользователь -->
+      <Border DockPanel.Dock="Top" Style="{StaticResource CardStyle}" Padding="12,10" Margin="0,0,0,8"
+              Visibility="{Binding HasFindPanel, Converter={StaticResource BoolToVisibilityConverter}}">
+        <StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontWeight="SemiBold"
+                       ToolTip="{Binding FindQuery}"><Run Text="Где работает «" /><Run Text="{Binding FindQuery, Mode=OneWay}" /><Run Text="»" /></TextBlock>
+            <Button Grid.Column="1" Content="Остановить" Margin="8,0,0,0" Command="{Binding CancelFindCommand}"
+                    Visibility="{Binding IsFinding, Converter={StaticResource BoolToVisibilityConverter}}"
+                    AutomationProperties.Name="Остановить поиск пользователя" />
+            <Button Grid.Column="2" Content="&#xE711;" Style="{StaticResource IconButtonStyle}" Width="28" Height="28" FontSize="12"
+                    Margin="4,0,0,0" Command="{Binding CloseFindCommand}"
+                    ToolTip="Закрыть результаты поиска" AutomationProperties.Name="Закрыть результаты поиска пользователя" />
+          </Grid>
+          <ProgressBar IsIndeterminate="True" Height="3" Margin="0,6,0,0"
+                       Visibility="{Binding IsFinding, Converter={StaticResource BoolToVisibilityConverter}}"
+                       AutomationProperties.Name="Идёт поиск пользователя" />
+          <TextBlock Text="{Binding FindStatus}" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,0" />
+          <ListBox ItemsSource="{Binding FoundLocations}" SelectedItem="{Binding SelectedLocation, Mode=TwoWay}"
+                   BorderThickness="0" Background="Transparent" MaxHeight="150" Margin="0,4,0,0"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   ItemContainerStyle="{StaticResource ListItemStyle}"
+                   Visibility="{Binding FoundLocations.Count, Converter={StaticResource EmptyToVisibilityConverter}, ConverterParameter=invert}"
+                   AutomationProperties.Name="Найденные сессии пользователя">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="{x:Type models:UserLocation}">
+                <StackPanel>
+                  <TextBlock TextTrimming="CharacterEllipsis"><Run Text="{Binding Computer.Name, Mode=OneWay}" FontWeight="SemiBold" /><Run Text=" · " /><Run Text="{Binding Session.AccountName, Mode=OneWay}" /></TextBlock>
+                  <TextBlock Style="{StaticResource CaptionMutedTextStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"><Run Text="{Binding Session.State, Mode=OneWay, Converter={StaticResource SessionStateTextConverter}}" /><Run Text=" · сессия " /><Run Text="{Binding Session.Id, Mode=OneWay}" /><Run Text="{Binding FromCache, Mode=OneWay, Converter={StaticResource BoolToTextConverter}, ConverterParameter=' · из кэша|'}" /></TextBlock>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </Border>
 
       <!-- Активная группа сужает список, а список групп спрятан в свёрнутой панели: сброс всегда на виду -->
       <Grid DockPanel.Dock="Top" Margin="0,0,0,8"
@@ -57,11 +118,12 @@
         <!-- Без прокрутки раскрытая панель занимает всю высоту и сжимает список компьютеров до нуля.
              280 — достаточно, чтобы список групп, форма добавления группы и начало списка подсетей были видны
              без прокрутки на обычном окне; дальше (подсети/сканирование) — через ползунок этого ScrollViewer. -->
-        <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="GroupsScroll" MaxHeight="280" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,8,8,0">
           <TextBlock Text="Мои группы" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,2" />
           <ListBox ItemsSource="{Binding Groups}" SelectedItem="{Binding SelectedGroup, Mode=TwoWay}"
                    BorderThickness="0" Background="Transparent" MaxHeight="120"
+                   KeyDown="OnGroupsKeyDown"
                    AutomationProperties.Name="Пользовательские группы компьютеров">
             <ListBox.ItemContainerStyle>
               <Style TargetType="ListBoxItem" BasedOn="{StaticResource ListItemStyle}">
@@ -76,11 +138,11 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                   </Grid.ColumnDefinitions>
-                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                  <Button Grid.Column="1" Content="&#xE70F;" ToolTip="Переименовать"
+                  <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                  <Button Grid.Column="1" Content="&#xE70F;" ToolTip="Переименовать группу" AutomationProperties.Name="Переименовать группу"
                           Command="{Binding DataContext.RenameGroupCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                           CommandParameter="{Binding}" Style="{StaticResource IconButtonStyle}" Width="24" Height="24" />
-                  <Button Grid.Column="2" Content="&#xE711;" ToolTip="Удалить группу (компьютер в AD не удаляется)"
+                  <Button Grid.Column="2" Content="&#xE711;" ToolTip="Удалить группу (Delete). Компьютеры в AD не удаляются." AutomationProperties.Name="Удалить группу"
                           Command="{Binding DataContext.DeleteGroupCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                           CommandParameter="{Binding}" Style="{StaticResource IconButtonStyle}" Width="24" Height="24" />
                 </Grid>
@@ -92,8 +154,15 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBox Text="{Binding NewGroupName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Название новой группы" />
-            <Button Grid.Column="1" Content="Добавить" Margin="4,0,0,0" Command="{Binding CreateGroupCommand}" />
+            <TextBox Text="{Binding NewGroupName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Название новой группы">
+              <TextBox.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding CreateGroupCommand}" />
+              </TextBox.InputBindings>
+            </TextBox>
+            <TextBlock Text="Новая группа" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Visibility="{Binding NewGroupName, Converter={StaticResource EmptyToVisibilityConverter}}" />
+            <Button Grid.Column="1" Content="Добавить" Margin="4,0,0,0" Command="{Binding CreateGroupCommand}" AutomationProperties.Name="Добавить группу" />
           </Grid>
           <StackPanel Margin="0,0,0,8" Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBlock Text="Выбранный компьютер и группа" Style="{StaticResource CaptionMutedTextStyle}" />
@@ -106,8 +175,10 @@
               </ComboBox.ItemContainerStyle>
             </ComboBox>
             <StackPanel Orientation="Horizontal">
-              <Button Content="+ в группу" Command="{Binding AddSelectedComputerToGroupCommand}" CommandParameter="{Binding MembershipGroup}" Margin="0,0,4,0" />
-              <Button Content="− из группы" Command="{Binding RemoveComputerFromGroupCommand}" CommandParameter="{Binding MembershipGroup}" />
+              <Button Content="+ в группу" Command="{Binding AddSelectedComputerToGroupCommand}" CommandParameter="{Binding MembershipGroup}" Margin="0,0,4,0"
+                      ToolTip="Добавить выбранный компьютер в группу" AutomationProperties.Name="Добавить компьютер в группу" />
+              <Button Content="− из группы" Command="{Binding RemoveComputerFromGroupCommand}" CommandParameter="{Binding MembershipGroup}"
+                      ToolTip="Убрать выбранный компьютер из группы" AutomationProperties.Name="Убрать компьютер из группы" />
             </StackPanel>
           </StackPanel>
 
@@ -135,7 +206,7 @@
                   <Button Grid.Column="1" Content="Сканировать"
                           Command="{Binding DataContext.ScanSubnetCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                           CommandParameter="{Binding}" Margin="4,0" />
-                  <Button Grid.Column="2" Content="&#xE711;" ToolTip="Удалить подсеть"
+                  <Button Grid.Column="2" Content="&#xE711;" ToolTip="Удалить подсеть" AutomationProperties.Name="Удалить подсеть"
                           Command="{Binding DataContext.DeleteSubnetCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                           CommandParameter="{Binding}" Style="{StaticResource IconButtonStyle}" Width="24" Height="24" />
                 </Grid>
@@ -143,14 +214,25 @@
             </ListBox.ItemTemplate>
           </ListBox>
           <StackPanel Margin="0,4,0,4">
-            <TextBox Text="{Binding NewSubnetName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Название подсети" Margin="0,0,0,4" />
-            <TextBox Text="{Binding NewSubnetCidr, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="CIDR подсети, например 10.0.0.0/24" Margin="0,0,0,4" />
+            <Grid Margin="0,0,0,4">
+              <TextBox Text="{Binding NewSubnetName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Название подсети" />
+              <TextBlock Text="Название подсети" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                         Visibility="{Binding NewSubnetName, Converter={StaticResource EmptyToVisibilityConverter}}" />
+            </Grid>
+            <Grid Margin="0,0,0,4">
+              <TextBox Text="{Binding NewSubnetCidr, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="CIDR подсети, например 10.0.0.0/24" />
+              <TextBlock Text="CIDR, например 10.0.0.0/24" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                         Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                         Visibility="{Binding NewSubnetCidr, Converter={StaticResource EmptyToVisibilityConverter}}" />
+            </Grid>
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding ProbeKindValues}" SelectedItem="{Binding NewSubnetProbeKind}" />
+              <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding ProbeKindValues}" SelectedItem="{Binding NewSubnetProbeKind}"
+                        ToolTip="Чем проверять адреса при сканировании" AutomationProperties.Name="Способ проверки адресов" />
               <Button Grid.Column="1" Content="Добавить подсеть" Margin="4,0,0,0" Command="{Binding AddSubnetCommand}" />
             </Grid>
           </StackPanel>
@@ -165,10 +247,13 @@
 
       <!-- Фильтры и поиск -->
       <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
-        <TextBox Padding="8,6"
+        <TextBox x:Name="FilterBox"
+                 Padding="8,6"
                  Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                 AutomationProperties.Name="Поиск компьютера" />
-        <TextBlock Text="Имя, описание или ОС компьютера"
+                 PreviewKeyDown="OnFilterBoxKeyDown"
+                 AutomationProperties.Name="Поиск компьютера"
+                 AutomationProperties.AcceleratorKey="Ctrl+F" />
+        <TextBlock Text="Имя, описание или ОС (Ctrl+F)"
                    Margin="11,0,8,0"
                    VerticalAlignment="Center"
                    IsHitTestVisible="False"
@@ -182,7 +267,7 @@
            без внутренней прокрутки на обычном окне — раньше 150px обрезали их ниже видимой области. -->
       <Expander x:Name="FiltersExpander" DockPanel.Dock="Top" Header="Фильтры и сортировка" Margin="0,0,0,8" IsExpanded="False"
                 Expanded="OnFiltersExpanded">
-        <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="FiltersScroll" MaxHeight="320" VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="0,8,8,0">
             <TextBlock Text="Доступность" Style="{StaticResource CaptionMutedTextStyle}" />
             <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding AvailabilityFilterValues}" SelectedItem="{Binding AvailabilityFilter}" AutomationProperties.Name="Фильтр по доступности" Margin="0,2,0,8" />
@@ -197,7 +282,7 @@
             </Grid.ColumnDefinitions>
             <Grid Margin="0,0,4,0">
               <TextBox Padding="8,6" Text="{Binding IpFilter, UpdateSourceTrigger=PropertyChanged}"
-                       ToolTip="Известен после «Обновить доступность» или сканирования подсети"
+                       ToolTip="Известен после «Обновить статусы» или сканирования подсети"
                        AutomationProperties.Name="Фильтр по IP-адресу" />
               <TextBlock Text="IP-адрес" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
                          Foreground="{DynamicResource TextFillColorTertiaryBrush}"
@@ -212,18 +297,22 @@
                          Visibility="{Binding OuFilter, Converter={StaticResource EmptyToVisibilityConverter}}" />
             </Grid>
           </Grid>
-          <WrapPanel Margin="0,0,0,8">
-            <CheckBox Content="RDP" IsChecked="{Binding FilterRdp}" Margin="0,0,10,0" />
-            <CheckBox Content="SMB" IsChecked="{Binding FilterSmb}" Margin="0,0,10,0" />
-            <CheckBox Content="SSH" IsChecked="{Binding FilterSsh}" Margin="0,0,10,0" />
-            <CheckBox Content="Показывать отключённые" IsChecked="{Binding ShowDisabledAd}" Margin="0,0,10,0" />
+          <TextBlock Text="Открытые порты" Style="{StaticResource CaptionMutedTextStyle}" />
+          <WrapPanel Margin="0,4,0,4">
+            <CheckBox Content="RDP" IsChecked="{Binding FilterRdp}" Margin="0,0,12,4" ToolTip="Только компьютеры с открытым портом RDP (3389)" />
+            <CheckBox Content="SMB" IsChecked="{Binding FilterSmb}" Margin="0,0,12,4" ToolTip="Только компьютеры с открытым портом SMB (445)" />
+            <CheckBox Content="SSH" IsChecked="{Binding FilterSsh}" Margin="0,0,12,4" ToolTip="Только компьютеры с открытым портом SSH (22)" />
           </WrapPanel>
-          <Grid Margin="0,0,0,8">
+          <CheckBox Content="Показывать отключённые в AD" IsChecked="{Binding ShowDisabledAd}" Margin="0,0,0,8" />
+          <TextBlock Text="Сортировка" Style="{StaticResource CaptionMutedTextStyle}" />
+          <Grid Margin="0,2,0,8">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <ComboBox ItemTemplate="{StaticResource EnumItemTemplate}" ItemsSource="{Binding SortByValues}" SelectedItem="{Binding SortBy}" AutomationProperties.Name="Сортировка" />
+            <CheckBox Grid.Column="1" Content="По убыванию" IsChecked="{Binding SortDescending}" Margin="10,0,0,0" VerticalAlignment="Center"
+                      AutomationProperties.Name="Сортировать по убыванию" />
           </Grid>
             <Button Content="Свернуть ▲" HorizontalAlignment="Left" Click="OnCollapseFilters" AutomationProperties.Name="Свернуть фильтры" />
           </StackPanel>
@@ -260,8 +349,11 @@
       <TextBlock DockPanel.Dock="Top" Text="{Binding EmptyListHint}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
                  Visibility="{Binding EmptyListHint, Converter={StaticResource NullToVisibilityConverter}}" />
 
-      <ListBox ItemsSource="{Binding Computers}" MinHeight="90"
+      <ListBox x:Name="ComputerList"
+               ItemsSource="{Binding Computers}" MinHeight="90"
                SelectedItem="{Binding SelectedComputer, Mode=TwoWay}"
+               PreviewKeyDown="OnComputerListKeyDown"
+               MouseDoubleClick="OnComputerListDoubleClick"
                BorderThickness="0"
                Background="Transparent"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -287,12 +379,8 @@
               <StackPanel Grid.Column="1">
                 <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                 <TextBlock Style="{StaticResource CaptionMutedTextStyle}"
-                           TextTrimming="CharacterEllipsis">
-                  <Run Text="{Binding IpAddresses[0], Mode=OneWay, FallbackValue=''}" />
-                  <Run Text=" · RDP " /><Run Text="{Binding RdpAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" />
-                  <Run Text=" · SMB " /><Run Text="{Binding SmbAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" />
-                  <Run Text=" · SSH " /><Run Text="{Binding SshAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" />
-                </TextBlock>
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"><Run Text="{Binding IpAddresses[0], Mode=OneWay, FallbackValue='IP неизвестен', TargetNullValue='IP неизвестен'}" /><Run Text=" · RDP " /><Run Text="{Binding RdpAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /><Run Text=" · SMB " /><Run Text="{Binding SmbAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /><Run Text=" · SSH " /><Run Text="{Binding SshAvailable, Mode=OneWay, Converter={StaticResource ProtocolAvailabilityTextConverter}}" /></TextBlock>
               </StackPanel>
             </Grid>
           </DataTemplate>
@@ -307,13 +395,40 @@
     <Grid Grid.Column="2">
       <ScrollViewer Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}"
                     VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24" MaxWidth="760" HorizontalAlignment="Left">
-          <TextBlock Text="{Binding SelectedComputer.Name}" Style="{StaticResource PageTitleStyle}" />
-          <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0">
-            <Run Text="{Binding SelectedComputer.OperatingSystem, Mode=OneWay}" />
-            <Run Text=" · " />
-            <Run Text="{Binding SelectedComputer.HostName, Mode=OneWay}" />
-          </TextBlock>
+        <Grid Margin="24">
+          <!-- Карточки растягиваются до 760 и прижаты влево: одинаковая ширина при любом наборе кнопок. -->
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MaxWidth="760" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+        <StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding SelectedComputer.Name}" Style="{StaticResource PageTitleStyle}" TextTrimming="CharacterEllipsis"
+                       ToolTip="{Binding SelectedComputer.Name}" />
+            <Button Content="&#xE8C8;" Style="{StaticResource IconButtonStyle}" FontSize="14" Margin="8,2,0,0"
+                    Command="{Binding CopyComputerNameCommand}"
+                    ToolTip="Копировать имя компьютера (Ctrl+C в списке)" AutomationProperties.Name="Копировать имя компьютера" />
+            <!-- Избранное: пустая звезда — добавить, закрашенная — убрать -->
+            <Button Command="{Binding ToggleFavoriteCommand}" CommandParameter="{Binding SelectedComputer}" Margin="2,2,0,0">
+              <Button.Style>
+                <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+                  <Setter Property="Content" Value="&#xE734;" />
+                  <Setter Property="FontSize" Value="15" />
+                  <Setter Property="ToolTip" Value="Добавить в избранное" />
+                  <Setter Property="AutomationProperties.Name" Value="Добавить в избранное" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsSelectedFavorite}" Value="True">
+                      <Setter Property="Content" Value="&#xE735;" />
+                      <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                      <Setter Property="ToolTip" Value="Убрать из избранного" />
+                      <Setter Property="AutomationProperties.Name" Value="Убрать из избранного" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Button.Style>
+            </Button>
+          </StackPanel>
+          <TextBlock Text="{Binding SelectedComputerSubtitle}" Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
 
           <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
             <StackPanel>
@@ -327,9 +442,14 @@
           <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
             <StackPanel>
               <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 <TextBlock Text="Сессии" Style="{StaticResource SectionTitleStyle}" VerticalAlignment="Center" />
-                <CheckBox Content="Без запроса пользователю"
-                          HorizontalAlignment="Right"
+                <CheckBox Grid.Column="1"
+                          Content="Без запроса пользователю"
+                          Margin="12,0,0,0"
                           IsChecked="{Binding NoConsent}"
                           ToolTip="Shadow без согласия пользователя — причина потребуется в диалоге подтверждения и попадёт в журнал." />
               </Grid>
@@ -340,12 +460,22 @@
               <TextBlock Text="{Binding SessionsError}"
                          Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                          Visibility="{Binding SessionsError, Converter={StaticResource NullToVisibilityConverter}}" />
-              <TextBlock Text="Сессий нет"
-                         Style="{StaticResource MutedTextStyle}"
-                         Visibility="{Binding Sessions.Count, Converter={StaticResource EmptyToVisibilityConverter}}" />
+              <TextBlock Text="Сессий нет: на компьютере никто не работает."
+                         Style="{StaticResource MutedTextStyle}">
+                <TextBlock.Visibility>
+                  <MultiBinding Converter="{StaticResource EmptyLoadedToVisibilityConverter}">
+                    <Binding Path="Sessions.Count" />
+                    <Binding Path="SessionsLoading" />
+                    <Binding Path="SessionsError" />
+                  </MultiBinding>
+                </TextBlock.Visibility>
+              </TextBlock>
 
-              <ListBox ItemsSource="{Binding Sessions}"
+              <ListBox x:Name="SessionList"
+                       ItemsSource="{Binding Sessions}"
                        SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
+                       PreviewKeyDown="OnSessionListKeyDown"
+                       MouseDoubleClick="OnSessionListDoubleClick"
                        BorderThickness="0"
                        Background="Transparent"
                        MaxHeight="220"
@@ -361,11 +491,7 @@
                         <ColumnDefinition Width="Auto" />
                       </Grid.ColumnDefinitions>
                       <StackPanel>
-                        <TextBlock>
-                          <Run Text="{Binding AccountName, Mode=OneWay}" />
-                          <Run Text=" · сессия " />
-                          <Run Text="{Binding Id, Mode=OneWay}" />
-                        </TextBlock>
+                        <TextBlock TextTrimming="CharacterEllipsis"><Run Text="{Binding AccountName, Mode=OneWay, TargetNullValue='без пользователя'}" /><Run Text=" · сессия " /><Run Text="{Binding Id, Mode=OneWay}" /></TextBlock>
                         <TextBlock Style="{StaticResource CaptionMutedTextStyle}"
                                    Text="{Binding State, Converter={StaticResource SessionStateTextConverter}}" />
                       </StackPanel>
@@ -380,7 +506,7 @@
                 </ListBox.ItemTemplate>
               </ListBox>
 
-              <TextBlock Text="Выберите сессию, чтобы увидеть доступные действия"
+              <TextBlock Text="Выберите сессию, чтобы увидеть доступные действия. Двойной щелчок или Enter — shadow-просмотр."
                          Style="{StaticResource CaptionMutedTextStyle}"
                          Margin="0,8,0,8"
                          Visibility="{Binding SelectedSession, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}" />
@@ -391,6 +517,7 @@
             </StackPanel>
           </Border>
         </StackPanel>
+        </Grid>
       </ScrollViewer>
 
       <StackPanel Style="{StaticResource EmptyStateStyle}"
@@ -398,7 +525,7 @@
         <TextBlock Text="&#xE977;" Style="{StaticResource IconTextStyle}" FontSize="40"
                    Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
         <TextBlock Text="Выберите компьютер" Style="{StaticResource EmptyStateTitleStyle}" />
-        <TextBlock Text="Слева — все компьютеры домена. Выберите компьютер, чтобы увидеть сессии и доступные действия."
+        <TextBlock Text="Слева — все компьютеры домена. Выберите компьютер, чтобы увидеть сессии и доступные действия. Двойной щелчок — подключение по RDP, правая кнопка — все действия."
                    Style="{StaticResource EmptyStateTextStyle}" />
       </StackPanel>
     </Grid>

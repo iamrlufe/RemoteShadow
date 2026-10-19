@@ -68,7 +68,7 @@ public sealed partial class FavoriteComputerItem : ObservableObject
 /// (<see cref="AppSettings.RecentComputers"/>). Компьютеры берутся из <see cref="IComputerIndex"/>; статус «в сети»
 /// обновляет <see cref="IOnlineStatusService"/> (списки короткие — проверяются сразу при открытии страницы и по кнопке).
 /// </summary>
-public sealed partial class FavoritesPageViewModel : ObservableObject, INavigationAware, IDisposable
+public sealed partial class FavoritesPageViewModel : ObservableObject, INavigationAware, IRefreshablePage, IDisposable
 {
     private static readonly TimeSpan ChangeInterval = TimeSpan.FromMilliseconds(250);
 
@@ -140,6 +140,31 @@ public sealed partial class FavoritesPageViewModel : ObservableObject, INavigati
     {
         Reload();
         await CheckOnlineAsync(force: true);
+    }
+
+    /// <summary>F5 (и Ctrl+F5) — перечитать списки и проверить, кто в сети.</summary>
+    public void RefreshPage(bool full)
+    {
+        if (RefreshCommand.CanExecute(null)) RefreshCommand.Execute(null);
+    }
+
+    /// <summary>Меню строки: открыть, быстрые действия, избранное, диагностика, копирование имени.</summary>
+    public IReadOnlyList<ActionButtonModel> BuildRowMenu(FavoriteComputerItem item)
+    {
+        var items = new List<ActionButtonModel>
+        {
+            ActionButtons.Local("local.open", "Открыть в разделе «Компьютеры»", ActionButtons.NavigateGroup, "device-desktop", () => Open(item)),
+            ActionButtons.Local("local.diagnostics", "Диагностика shadow", ActionButtons.NavigateGroup, "stethoscope",
+                () => _navigation.NavigateTo(PageIds.Diagnostics, new DiagnoseComputerRequest(item.Id))),
+        };
+
+        items.AddRange(item.Buttons);
+        items.Add(item.IsFavorite
+            ? ActionButtons.Local("local.unfavorite", "Убрать из избранного", "Избранное", "star", () => SetFavorite(item, false))
+            : ActionButtons.Local("local.favorite", "Добавить в избранное", "Избранное", "star", () => SetFavorite(item, true)));
+        items.Add(ActionButtons.Local("local.copy-name", "Копировать имя", ActionButtons.CopyGroup, "copy",
+            () => ClipboardText.Copy(item.Name, _notifications)));
+        return items;
     }
 
     [RelayCommand]

@@ -9,12 +9,16 @@ namespace RemoteShadow.Core.Util;
 /// </summary>
 public static partial class HostNameValidator
 {
-    [GeneratedRegex(@"^[A-Za-z0-9_]([A-Za-z0-9_\-]{0,61}[A-Za-z0-9_])?$")]
+    // \z, а не $: «$» в .NET совпадает и перед завершающим \n, и «pc1\n» прошло бы проверку.
+    [GeneratedRegex(@"^[A-Za-z0-9_]([A-Za-z0-9_\-]{0,61}[A-Za-z0-9_])?\z")]
     private static partial Regex LabelRegex();
 
     public static bool IsValid(string? host)
     {
         if (string.IsNullOrWhiteSpace(host) || host.Length > 253) return false;
+
+        // Пробелы и управляющие символы недопустимы нигде, в том числе вокруг IP-адреса («10.0.0.5\n»).
+        if (host.Any(c => char.IsWhiteSpace(c) || char.IsControl(c))) return false;
 
         if (IPAddress.TryParse(host, out var ip))
         {

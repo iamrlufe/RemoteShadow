@@ -249,6 +249,35 @@ public class ComputerAvailabilityServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => refresh.WithTimeout());
     }
 
+    [Fact]
+    public async Task Cancellation_clears_checking_flag_and_keeps_previous_result()
+    {
+        var fx = new Fixture();
+        fx.Settings.Settings.AvailabilityParallelism = 2;
+        var pcs = fx.AddComputers(10);
+        var checkedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        foreach (var pc in pcs)
+            fx.Index.SetAvailability(pc.Id, isChecking: false, online: true, rdp: true, smb: true, icmp: true, checkedAtUtc: checkedAt);
+
+        var hold = new Gate();
+        fx.Tcp.Hold = (_, ct) => hold.WaitAsync(ct);
+        using var cts = new CancellationTokenSource();
+
+        var refresh = fx.RefreshAsync(pcs, force: true, ct: cts.Token);
+        await Wait.UntilAsync(() => fx.Tcp.Calls.Count >= 2);
+        await cts.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => refresh.WithTimeout());
+
+        foreach (var pc in pcs)
+        {
+            var state = fx.StateOf(pc)!;
+            Assert.False(state.IsChecking);
+            Assert.True(state.IsOnline);
+            Assert.True(state.RdpAvailable);
+            Assert.Equal(checkedAt, state.LastCheckedUtc);
+        }
+    }
+
     private sealed class FakeDns(Func<string, IReadOnlyList<string>> resolve) : RemoteShadow.Core.Services.IDnsResolverService
     {
         public Task<IReadOnlyList<string>> ResolveAsync(string host, CancellationToken ct) => Task.FromResult(resolve(host));

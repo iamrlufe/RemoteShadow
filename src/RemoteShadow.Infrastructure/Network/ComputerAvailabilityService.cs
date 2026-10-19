@@ -93,6 +93,7 @@ public sealed class ComputerAvailabilityService : IComputerAvailabilityService
             if (i >= todo.Count) return;
 
             var computer = todo[i];
+            var before = _index.Find(computer.Id) ?? computer;
             _index.SetAvailability(computer.Id, isChecking: true);
 
             bool? rdp = null, smb = null, ssh = null, icmp = null;
@@ -135,6 +136,11 @@ public sealed class ComputerAvailabilityService : IComputerAvailabilityService
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
+                // Проверка прервана: снимаем «идёт проверка» и возвращаем прежний результат, иначе компьютер так и
+                // остался бы в состоянии «проверяется» до следующего опроса.
+                _index.SetAvailability(
+                    computer.Id, isChecking: false, before.IsOnline, before.RdpAvailable, before.SmbAvailable,
+                    before.SshAvailable, before.IcmpAvailable, before.LastCheckedUtc);
                 return;
             }
 

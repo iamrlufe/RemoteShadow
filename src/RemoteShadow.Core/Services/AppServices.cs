@@ -19,7 +19,15 @@ public sealed record ConfirmRequest(
 
 public sealed record ReasonResult(bool Confirmed, string? Reason);
 
-public sealed record PasswordChoice(string Password, bool MustChangeAtNextLogon);
+public sealed record PasswordChoice(string Password, bool MustChangeAtNextLogon)
+{
+    // Сгенерированный ToString записи вывел бы новый пароль пользователя.
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append("Password = ***, MustChangeAtNextLogon = ").Append(MustChangeAtNextLogon);
+        return true;
+    }
+}
 
 /// <summary>Диалоги оболочки. Реализует App.</summary>
 public interface IDialogService

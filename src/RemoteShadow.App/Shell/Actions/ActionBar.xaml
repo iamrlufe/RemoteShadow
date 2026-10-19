@@ -44,9 +44,16 @@
                Visibility="Collapsed" />
 
     <!-- Кнопки по группам -->
+    <!-- Группы идут сверху вниз, кнопки внутри группы переносятся по ширине карточки.
+         GroupStyle.Panel раскладывает сами группы, ItemsPanel — кнопки внутри группы. -->
     <ItemsControl x:Name="GroupsHost"
                   IsTabStop="False"
                   ItemTemplate="{StaticResource ActionButtonTemplate}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
       <ItemsControl.GroupStyle>
         <GroupStyle>
           <GroupStyle.HeaderTemplate>
@@ -56,7 +63,7 @@
           </GroupStyle.HeaderTemplate>
           <GroupStyle.Panel>
             <ItemsPanelTemplate>
-              <WrapPanel Orientation="Horizontal" />
+              <StackPanel Orientation="Vertical" />
             </ItemsPanelTemplate>
           </GroupStyle.Panel>
           <GroupStyle.ContainerStyle>

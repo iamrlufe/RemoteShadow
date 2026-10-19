@@ -38,7 +38,7 @@
               Visibility="Collapsed"
               Click="OnCopyClick" />
       <Button x:Name="OkButton"
-              Content="OK"
+              Content="ОК"
               Style="{StaticResource PrimaryButtonStyle}"
               IsDefault="True"
               IsCancel="True"

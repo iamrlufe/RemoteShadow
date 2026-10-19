@@ -90,9 +90,11 @@
               Cursor="Hand"
               Background="{DynamicResource ControlSolidFillColorDefaultBrush}"
               BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-              ToolTip="Нажмите, чтобы закрыть"
+              ToolTip="Нажмите, чтобы закрыть. Пока указатель над уведомлением, оно не исчезает."
               AutomationProperties.Name="{Binding Message}"
               AutomationProperties.LiveSetting="Polite"
+              MouseEnter="OnToastMouseEnter"
+              MouseLeave="OnToastMouseLeave"
               MouseLeftButtonUp="OnToastClick">
         <Border.Effect>
           <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.25" />
@@ -107,7 +109,7 @@
                      VerticalAlignment="Top"
                      Margin="0,1,0,0"
                      Text="{Binding Glyph}"
-                     Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                     Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
           <TextBlock Grid.Column="1"
                      Margin="10,0,0,0"
                      Text="{Binding Message}"
@@ -276,6 +278,11 @@
               <MenuItem x:Name="SignOutItem"
                         Header="Выйти"
                         Click="OnSignOutClick" />
+              <Separator />
+              <MenuItem x:Name="ShortcutsItem"
+                        Header="Сочетания клавиш"
+                        InputGestureText="F1"
+                        Click="OnShortcutsClick" />
             </ContextMenu>
           </Button.ContextMenu>
         </Button>

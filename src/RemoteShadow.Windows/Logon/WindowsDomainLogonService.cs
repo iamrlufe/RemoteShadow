@@ -191,11 +191,19 @@ public sealed class WindowsDomainLogonService : IDomainLogonService
         var portFailure = await CheckPortAsync(host, ct).ConfigureAwait(false);
         if (portFailure is not null) return ProbeOutcome.Fail(portFailure.Value);
 
+        var probe = Task.Run(() => ProbeBlocking(host, network, credential, currentUserSid), CancellationToken.None);
+
+        // При таймауте или отмене пробное подключение дорабатывает в фоне; его ошибку забираем здесь,
+        // иначе она всплыла бы как необработанная ошибка фоновой задачи.
+        _ = probe.ContinueWith(
+            static t => _ = t.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
         try
         {
-            return await Task.Run(() => ProbeBlocking(host, network, credential, currentUserSid), CancellationToken.None)
-                .WaitAsync(ProbeTimeout, ct)
-                .ConfigureAwait(false);
+            return await probe.WaitAsync(ProbeTimeout, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -282,7 +290,8 @@ public sealed class WindowsDomainLogonService : IDomainLogonService
     {
         try
         {
-            return WindowsIdentity.GetCurrent().Name;
+            using var identity = WindowsIdentity.GetCurrent();
+            return identity.Name;
         }
         catch (Exception)
         {

@@ -46,7 +46,10 @@ public sealed class ReverseDnsResolver : IReverseDnsResolver
         {
             var entry = await Dns.GetHostEntryAsync(ip).WaitAsync(ct).ConfigureAwait(false);
             var name = entry.HostName;
-            return string.IsNullOrWhiteSpace(name) ? null : name;
+
+            // Без PTR-записи Windows может вернуть вместо имени сам адрес: это не имя, сопоставлять по нему нечего.
+            if (string.IsNullOrWhiteSpace(name) || IPAddress.TryParse(name, out _)) return null;
+            return name;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

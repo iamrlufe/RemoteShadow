@@ -229,7 +229,7 @@ internal static class ToneResources
         StatusTone.Success => "SystemFillColorSuccessBrush",
         StatusTone.Warning => "SystemFillColorCautionBrush",
         StatusTone.Critical => "SystemFillColorCriticalBrush",
-        StatusTone.Info => "SystemFillColorAttentionBrush",
+        StatusTone.Info => "AccentTextFillColorPrimaryBrush",
         StatusTone.Neutral => "SystemFillColorNeutralBrush",
         _ => "TextFillColorTertiaryBrush",
     };
@@ -255,4 +255,66 @@ internal static class ToneResources
         brush.Freeze();
         return brush;
     }
+}
+
+/// <summary>
+/// Несколько bool → Visible, если хотя бы один true (например, «идёт загрузка списка» или «идёт проверка»).
+/// Параметр <c>invert</c> — Visible, когда все false.
+/// </summary>
+public sealed class AnyTrueToVisibilityConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var any = values.Any(v => v is true);
+        if (ConverterParameters.Has(parameter, "invert")) any = !any;
+        return any ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>Значение есть (не null и не пустая строка) → true. Для сборки условий в <see cref="AnyTrueToVisibilityConverter"/>.</summary>
+[ValueConversion(typeof(object), typeof(bool))]
+public sealed class NotNullToBoolConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is not null && !(value is string text && string.IsNullOrWhiteSpace(text));
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>bool → один из двух текстов из параметра «текст для true|текст для false».</summary>
+[ValueConversion(typeof(bool), typeof(string))]
+public sealed class BoolToTextConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var parts = (parameter as string ?? string.Empty).Split('|');
+        var whenTrue = parts[0];
+        var whenFalse = parts.Length > 1 ? parts[1] : string.Empty;
+        return value is true ? whenTrue : whenFalse;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>
+/// (число элементов, идёт загрузка[, текст ошибки]) → надпись «пусто» («Сессий нет», «Нет групп») показывается
+/// только после успешной загрузки пустого списка, а не во время загрузки и не вместе с ошибкой.
+/// </summary>
+public sealed class EmptyLoadedToVisibilityConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        var empty = values.Length > 0 && values[0] is 0;
+        var loading = values.Length > 1 && values[1] is true;
+        var hasError = values.Length > 2 && values[2] is string { Length: > 0 };
+        return empty && !loading && !hasError ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public object[] ConvertBack(object? value, Type[] targetTypes, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
 }

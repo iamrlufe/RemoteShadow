@@ -100,7 +100,10 @@ internal sealed class FakeDialogService : IDialogService
     public string PromptTextResult { get; set; } = "Текст для теста";
     public PasswordChoice PasswordResult { get; set; } = new("Passw0rd!1", true);
 
-    public Task<bool> ConfirmAsync(ConfirmRequest request) => Task.FromResult(true);
+    /// <summary>Ответ на <see cref="ConfirmAsync"/> (по умолчанию — подтвердить).</summary>
+    public bool ConfirmResult { get; set; } = true;
+
+    public Task<bool> ConfirmAsync(ConfirmRequest request) => Task.FromResult(ConfirmResult);
 
     public Task<ReasonResult> ConfirmWithReasonAsync(ConfirmRequest request) =>
         Task.FromResult(new ReasonResult(true, ReasonText));

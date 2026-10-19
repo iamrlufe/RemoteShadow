@@ -32,12 +32,17 @@ public sealed class DemoSubnetScanner : ISubnetScanner
         ArgumentNullException.ThrowIfNull(subnet);
         ct.ThrowIfCancellationRequested();
 
-        var addresses = Cidr.Parse(subnet.Cidr).UsableAddresses().Select(a => a.ToString()).ToList();
-        var total = addresses.Count;
+        var range = Cidr.Parse(subnet.Cidr);
+        if (range.UsableCount > int.MaxValue)
+            throw new ArgumentException($"Подсеть {subnet.Cidr} слишком велика для сканирования.", nameof(subnet));
+
+        // Адреса перечисляются лениво: список строк для /8 занял бы гигабайт памяти.
+        var total = (int)range.UsableCount;
         var completed = 0;
 
-        foreach (var ip in addresses)
+        foreach (var address in range.UsableAddresses())
         {
+            var ip = address.ToString();
             ct.ThrowIfCancellationRequested();
             completed++;
 
@@ -49,9 +54,10 @@ public sealed class DemoSubnetScanner : ISubnetScanner
 
             progress?.Report(new ScanProgress(completed, total, ip));
 
+            // Адрес мог быть выдан компьютеру, которого уже нет (удалён или переименован): тогда он просто не отвечает.
             var host = _map.HostFor(ip);
             var online = host is not null
-                ? _data.IsOnline(_data.FindComputerByHost(host)!.Id)
+                ? _data.FindComputerByHost(host) is { } computer && _data.IsOnline(computer.Id)
                 : DemoRandom.Hash($"{ip}:{subnet.Id}") % 6 == 0;
 
             if (!online) continue;

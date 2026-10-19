@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using RemoteShadow.Core.Models;
 using RemoteShadow.Core.Services;
@@ -37,56 +38,97 @@ public sealed class SubnetScanner : ISubnetScanner
         ct.ThrowIfCancellationRequested();
 
         var range = Cidr.Parse(subnet.Cidr);
-        var addresses = range.UsableAddresses().Select(a => a.ToString()).ToList();
-        var total = addresses.Count;
+
+        // Прогресс считается в int; /0 и /1 (больше 2^31 адресов) честно отклоняем, а не переполняем счётчики.
+        if (range.UsableCount > int.MaxValue)
+            throw new ArgumentException($"Подсеть {subnet.Cidr} слишком велика для сканирования.", nameof(subnet));
+
+        // Адреса не собираются в список: у /8 их 16 млн, строки заняли бы гигабайт памяти. Адрес считается по номеру.
+        var total = (int)range.UsableCount;
+        var first = range.PrefixLength >= 31 ? range.Network : range.Network + 1;
         var timeout = TimeSpan.FromMilliseconds(Math.Clamp(subnet.TimeoutMs, 50, 30_000));
         var parallelism = Math.Clamp(subnet.Parallelism, 1, 512);
 
         var results = new ConcurrentQueue<DiscoveredDevice>();
-        var completed = 0;
+        var probed = 0;
         var next = -1;
 
+        // Свой источник отмены: если потребитель перестал читать (break, исключение), воркеры не должны продолжать
+        // сканировать всю подсеть в фоне.
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var token = stop.Token;
+
         var workers = Enumerable.Range(0, Math.Min(parallelism, Math.Max(total, 1)))
-            .Select(_ => Task.Run(() => WorkAsync(addresses, subnet, timeout, results, () => Interlocked.Increment(ref next), ct), CancellationToken.None))
+            .Select(_ => Task.Run(
+                () => WorkAsync(first, total, subnet, timeout, results, () => Interlocked.Increment(ref next), () => Interlocked.Increment(ref probed), token),
+                CancellationToken.None))
             .ToArray();
 
-        // Отдаём результаты по мере появления, не дожидаясь конца всего скана: UI может показывать прогресс и список сразу.
-        while (!workers.All(w => w.IsCompleted) || !results.IsEmpty)
+        try
         {
-            ct.ThrowIfCancellationRequested();
-
-            while (results.TryDequeue(out var device))
+            // Отдаём результаты по мере появления, не дожидаясь конца всего скана: UI может показывать прогресс и список сразу.
+            var reported = -1;
+            while (true)
             {
                 ct.ThrowIfCancellationRequested();
-                completed++;
-                progress?.Report(new ScanProgress(completed, total, device.IpAddress));
-                yield return device;
+                var allDone = workers.All(w => w.IsCompleted);
+
+                while (results.TryDequeue(out var device))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    reported = Volatile.Read(ref probed);
+                    progress?.Report(new ScanProgress(reported, total, device.IpAddress));
+                    yield return device;
+                }
+
+                // Прогресс — по проверенным адресам, а не по найденным устройствам: иначе на пустой подсети он стоит на нуле.
+                var done = Volatile.Read(ref probed);
+                if (done != reported && !allDone)
+                {
+                    reported = done;
+                    progress?.Report(new ScanProgress(done, total, null));
+                }
+
+                if (allDone && results.IsEmpty) break;
+                if (!allDone) await Task.Delay(20, ct).ConfigureAwait(false);
             }
 
-            if (!workers.All(w => w.IsCompleted)) await Task.Delay(20, ct).ConfigureAwait(false);
+            await Task.WhenAll(workers).ConfigureAwait(false);
+            progress?.Report(new ScanProgress(total, total, null));
         }
-
-        await Task.WhenAll(workers).ConfigureAwait(false);
-
-        // Воркеры считают прогресс и для адресов, которые не ответили (чтобы прогресс-бар не "застревал"), — их
-        // число отличается от количества выданных устройств, поэтому финальный отчёт выравнивает прогресс до 100%.
-        progress?.Report(new ScanProgress(total, total, null));
+        finally
+        {
+            await stop.CancelAsync().ConfigureAwait(false);
+        }
     }
 
     private async Task WorkAsync(
-        List<string> addresses, SubnetDefinition subnet, TimeSpan timeout,
-        ConcurrentQueue<DiscoveredDevice> results, Func<int> takeNext, CancellationToken ct)
+        uint first, int total, SubnetDefinition subnet, TimeSpan timeout,
+        ConcurrentQueue<DiscoveredDevice> results, Func<int> takeNext, Func<int> markProbed, CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
             var i = takeNext();
-            if (i >= addresses.Count) return;
+            if (i >= total) return;
 
-            var ip = addresses[i];
-            var online = await ProbeAsync(ip, subnet.ProbeKind, timeout, ct).ConfigureAwait(false);
-            if (!online) continue;
+            var ip = AddressAt(first, i);
+            bool online;
+            try
+            {
+                online = await ProbeAsync(ip, subnet.ProbeKind, timeout, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
 
-            string? reverseDns = null;
+            if (!online)
+            {
+                markProbed();
+                continue;
+            }
+
+            string? reverseDns;
             try
             {
                 reverseDns = await _reverseDns.ResolveAsync(ip, ct).ConfigureAwait(false);
@@ -95,7 +137,12 @@ public sealed class SubnetScanner : ISubnetScanner
             {
                 return;
             }
+            catch
+            {
+                reverseDns = null; // Сбой обратного DNS не отменяет находку и не роняет весь скан.
+            }
 
+            markProbed();
             var now = _time.GetUtcNow().UtcDateTime;
             results.Enqueue(new DiscoveredDevice
             {
@@ -109,6 +156,12 @@ public sealed class SubnetScanner : ISubnetScanner
                 IsOnline = true,
             });
         }
+    }
+
+    private static string AddressAt(uint first, int index)
+    {
+        var value = first + (uint)index;
+        return string.Create(CultureInfo.InvariantCulture, $"{value >> 24}.{(value >> 16) & 0xFF}.{(value >> 8) & 0xFF}.{value & 0xFF}");
     }
 
     private async Task<bool> ProbeAsync(string ip, ProbeKind kind, TimeSpan timeout, CancellationToken ct)

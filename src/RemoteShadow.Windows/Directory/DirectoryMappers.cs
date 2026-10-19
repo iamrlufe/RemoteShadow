@@ -91,7 +91,12 @@ internal static class DirectoryMappers
         var computed = LdapValueParser.ParseInt(a.GetString("msDS-User-Account-Control-Computed"));
         if (computed is not null) return UserAccountControl.IsLockedOut(computed.Value);
 
-        return long.TryParse(a.GetString("lockoutTime"), out var lockoutTime) && lockoutTime > 0;
+        return long.TryParse(
+                   a.GetString("lockoutTime"),
+                   System.Globalization.NumberStyles.Integer,
+                   System.Globalization.CultureInfo.InvariantCulture,
+                   out var lockoutTime)
+               && lockoutTime > 0;
     }
 
     private static Guid? ReadGuid(ILdapAttributes a)

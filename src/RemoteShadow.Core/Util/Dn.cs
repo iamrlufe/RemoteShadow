@@ -93,7 +93,15 @@ public static class Dn
         for (var i = 0; i < value.Length; i++)
         {
             var c = value[i];
-            var needs = c is ',' or '+' or '"' or '\\' or '<' or '>' or ';' or '=' or '\0'
+
+            // NUL, CR, LF и прочие управляющие символы допустимы только как hexpair (RFC 4514): «\00», «\0A».
+            if (char.IsControl(c) && c < 0x80)
+            {
+                sb.Append('\\').Append(((int)c).ToString("X2", System.Globalization.CultureInfo.InvariantCulture));
+                continue;
+            }
+
+            var needs = c is ',' or '+' or '"' or '\\' or '<' or '>' or ';' or '='
                         || (i == 0 && (c is '#' or ' '))
                         || (i == value.Length - 1 && c == ' ');
             if (needs) sb.Append('\\');

@@ -16,16 +16,26 @@ public sealed class DemoNetworkMap
     private readonly IReadOnlyList<string> _addresses = Cidr.Parse(OfficeCidr).UsableAddresses().Select(a => a.ToString()).ToList();
     private readonly ConcurrentDictionary<string, string> _ipByHost = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, string> _hostByIp = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _assignGate = new();
     private int _next = 10; // первые адреса «заняты» шлюзом/принтерами, как в настоящей сети
 
     /// <summary>IP-адрес для хоста; при первом обращении назначается следующий свободный из <see cref="OfficeCidr"/>.</summary>
-    public string IpFor(string host) => _ipByHost.GetOrAdd(host, h =>
+    public string IpFor(string host)
     {
-        var index = Interlocked.Increment(ref _next) % _addresses.Count;
-        var ip = _addresses[index];
-        _hostByIp[ip] = h;
-        return ip;
-    });
+        if (_ipByHost.TryGetValue(host, out var known)) return known;
+
+        // GetOrAdd может вызвать фабрику дважды для одного хоста при одновременных запросах: тогда хосту доставались бы
+        // два адреса, и «лишний» отвечал бы его именем в обратном DNS. Назначение — под блокировкой.
+        lock (_assignGate)
+        {
+            if (_ipByHost.TryGetValue(host, out known)) return known;
+
+            var ip = _addresses[++_next % _addresses.Count];
+            _hostByIp[ip] = host;
+            _ipByHost[host] = ip;
+            return ip;
+        }
+    }
 
     /// <summary>Имя хоста по IP, если он уже был выдан через <see cref="IpFor"/>; иначе null (устройство вне AD).</summary>
     public string? HostFor(string ip) => _hostByIp.GetValueOrDefault(ip);

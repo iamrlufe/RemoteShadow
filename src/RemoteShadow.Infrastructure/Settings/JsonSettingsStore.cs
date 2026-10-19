@@ -74,7 +74,7 @@ public sealed class JsonSettingsStore : ISettingsStore
         try
         {
             if (!File.Exists(_file)) return new AppSettings();
-            bytes = File.ReadAllBytes(_file);
+            bytes = ReadWithRetry(_file);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -93,6 +93,23 @@ public sealed class JsonSettingsStore : ISettingsStore
             Quarantine();
             _lastError = "Файл настроек повреждён и был переименован в settings.json.bad. Используются значения по умолчанию.";
             return new AppSettings();
+        }
+    }
+
+    // Антивирус, индексатор или второй экземпляр программы могут на миг держать файл. Без повтора программа взяла бы
+    // значения по умолчанию, закэшировала их, и первое же сохранение затёрло бы избранное, группы и подсети пользователя.
+    private static byte[] ReadWithRetry(string path)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return File.ReadAllBytes(path);
+            }
+            catch (IOException ex) when (attempt < 5 && (ex.HResult & 0xFFFF) is 32 or 33)
+            {
+                Thread.Sleep(25 * attempt);
+            }
         }
     }
 

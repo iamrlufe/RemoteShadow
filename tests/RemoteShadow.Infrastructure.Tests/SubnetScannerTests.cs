@@ -129,6 +129,75 @@ public class SubnetScannerTests
     }
 
     [Fact]
+    public async Task Slash_32_scans_exactly_one_address()
+    {
+        var fx = new Fixture();
+        fx.Icmp.Online = _ => true;
+
+        var found = await fx.ScanAsync(Subnet("10.9.0.7/32", ProbeKind.IcmpOnly));
+
+        Assert.Equal("10.9.0.7", Assert.Single(found).IpAddress);
+    }
+
+    [Fact]
+    public async Task Too_large_range_is_rejected()
+    {
+        var fx = new Fixture();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => fx.ScanAsync(Subnet("0.0.0.0/0")));
+        Assert.Empty(fx.Icmp.Calls);
+    }
+
+    [Fact]
+    public async Task Reverse_dns_failure_keeps_the_device_and_the_scan()
+    {
+        var fx = new Fixture();
+        fx.Icmp.Online = _ => true;
+        fx.Dns.Throwing.Add("10.9.0.1");
+
+        var found = await fx.ScanAsync(Subnet("10.9.0.0/30", ProbeKind.IcmpOnly));
+
+        Assert.Equal(2, found.Count);
+        Assert.Null(found.Single(d => d.IpAddress == "10.9.0.1").ReverseDnsName);
+    }
+
+    [Fact]
+    public async Task Progress_counts_probed_addresses_not_found_devices()
+    {
+        var fx = new Fixture();
+        fx.Tcp.Online = _ => false; // ни одного устройства: прогресс всё равно должен двигаться
+        fx.Tcp.Hold = (_, ct) => Task.Delay(15, ct);
+        var reports = new List<ScanProgress>();
+
+        await fx.ScanAsync(Subnet("10.9.0.0/28", ProbeKind.TcpOnly, parallelism: 1), new Progress2(reports));
+
+        Assert.Contains(reports, r => r.Completed > 0 && r.Completed < 14);
+        Assert.All(reports, r => Assert.InRange(r.Completed, 0, 14));
+        Assert.Equal(14, reports[^1].Completed);
+    }
+
+    [Fact]
+    public async Task Leaving_the_enumeration_early_stops_background_probes()
+    {
+        var fx = new Fixture();
+        fx.Icmp.Online = _ => true;
+        fx.Tcp.Hold = (_, ct) => Task.Delay(5, ct);
+
+        await foreach (var _ in fx.Scanner.ScanAsync(Subnet("10.9.0.0/20", ProbeKind.Both, parallelism: 4), null, CancellationToken.None))
+        {
+            break;
+        }
+
+        // После выхода из цикла воркеры отменены: число проверок перестаёт расти, хотя адресов ещё тысячи.
+        await Task.Delay(100);
+        var afterStop = fx.Icmp.Calls.Count;
+        await Task.Delay(300);
+
+        Assert.True(fx.Icmp.Calls.Count - afterStop <= 4, $"Проверки продолжились: {afterStop} → {fx.Icmp.Calls.Count}.");
+        Assert.True(fx.Icmp.Calls.Count < 4094);
+    }
+
+    [Fact]
     public void Scanning_a_real_external_address_is_never_attempted_by_the_fakes()
     {
         // Гарантия для ревью: фейки сканера работают только с адресами, переданными им явно, и не используют

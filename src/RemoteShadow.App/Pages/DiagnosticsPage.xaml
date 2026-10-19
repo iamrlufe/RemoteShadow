@@ -9,19 +9,22 @@
   </UserControl.Resources>
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="320" />
+      <ColumnDefinition Width="2*" MinWidth="260" MaxWidth="360" />
       <ColumnDefinition Width="Auto" />
-      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="5*" />
     </Grid.ColumnDefinitions>
 
     <!-- ===== Выбор компьютера ===== -->
     <DockPanel Grid.Column="0" Margin="16,16,8,16">
       <TextBlock DockPanel.Dock="Top" Text="Диагностика" Style="{StaticResource PageTitleStyle}" Margin="0,0,0,12" />
       <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
-        <TextBox Padding="8,6"
+        <TextBox x:Name="FilterBox"
+                 Padding="8,6"
                  Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                 AutomationProperties.Name="Поиск компьютера" />
-        <TextBlock Text="Имя, описание или ОС компьютера"
+                 PreviewKeyDown="OnFilterBoxKeyDown"
+                 AutomationProperties.Name="Поиск компьютера"
+                 AutomationProperties.AcceleratorKey="Ctrl+F" />
+        <TextBlock Text="Имя, описание или ОС (Ctrl+F)"
                    Margin="11,0,8,0"
                    VerticalAlignment="Center"
                    IsHitTestVisible="False"
@@ -29,16 +32,29 @@
                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                    Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
       </Grid>
-      <ListBox ItemsSource="{Binding Computers}"
+      <ListBox x:Name="ComputerList"
+               ItemsSource="{Binding Computers}"
                SelectedItem="{Binding SelectedComputer, Mode=TwoWay}"
+               PreviewKeyDown="OnComputerListKeyDown"
+               MouseDoubleClick="OnComputerListDoubleClick"
                BorderThickness="0"
                Background="Transparent"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-               ItemContainerStyle="{StaticResource ListItemStyle}"
+               VirtualizingStackPanel.IsVirtualizing="True"
+               VirtualizingStackPanel.VirtualizationMode="Recycling"
                AutomationProperties.Name="Список компьютеров">
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="ListBoxItem" BasedOn="{StaticResource ListItemStyle}">
+            <Setter Property="AutomationProperties.Name" Value="{Binding Name}" />
+          </Style>
+        </ListBox.ItemContainerStyle>
         <ListBox.ItemTemplate>
           <DataTemplate DataType="{x:Type models:ComputerInfo}">
-            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+            <StackPanel Orientation="Horizontal">
+              <Ellipse Style="{StaticResource StatusDotStyle}" Margin="0,0,10,0"
+                       Tag="{Binding AvailabilityStatus, Converter={StaticResource AvailabilityStatusConverter}}" />
+              <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
@@ -50,14 +66,24 @@
     <Grid Grid.Column="2">
       <ScrollViewer Visibility="{Binding SelectedComputer, Converter={StaticResource NullToVisibilityConverter}}"
                     VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24" MaxWidth="760" HorizontalAlignment="Left">
+        <Grid Margin="24">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MaxWidth="760" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+        <StackPanel>
           <Grid>
-            <StackPanel HorizontalAlignment="Left">
-              <TextBlock Text="{Binding SelectedComputer.Name}" Style="{StaticResource PageTitleStyle}" />
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Text="{Binding SelectedComputer.Name}" Style="{StaticResource PageTitleStyle}" TextTrimming="CharacterEllipsis"
+                         ToolTip="{Binding SelectedComputer.Name}" />
               <TextBlock Text="Почему не работает shadow: политика, брандмауэр, служба, права"
                          Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
               <Button Style="{StaticResource FlatActionButtonStyle}"
                       Margin="0,0,8,0"
                       Command="{Binding CopyReportCommand}"
@@ -72,6 +98,7 @@
               <Button Content="Проверить"
                       Style="{StaticResource PrimaryButtonStyle}"
                       Command="{Binding RunCommand}"
+                      ToolTip="Запустить проверку (F5, Enter или двойной щелчок по компьютеру)"
                       AutomationProperties.Name="Запустить диагностику" />
             </StackPanel>
           </Grid>
@@ -124,7 +151,8 @@
                           <TextBlock Text="{Binding Item.Status, Converter={StaticResource EnumTextConverter}}" />
                         </Border>
                       </StackPanel>
-                      <TextBlock Text="{Binding Item.Detail}" Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
+                      <TextBlock Text="{Binding Item.Detail}" Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0"
+                                 Visibility="{Binding Item.Detail, Converter={StaticResource NullToVisibilityConverter}}" />
                       <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                  Visibility="{Binding Item.Hint, Converter={StaticResource NullToVisibilityConverter}}">
@@ -157,11 +185,19 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
 
-          <TextBlock Text="Нажмите «Проверить», чтобы проверить компьютер"
+          <TextBlock Text="Нажмите «Проверить» (F5), чтобы проверить компьютер."
                      Style="{StaticResource MutedTextStyle}"
-                     Margin="0,16,0,0"
-                     Visibility="{Binding Report, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=invert}" />
+                     Margin="0,16,0,0">
+            <TextBlock.Visibility>
+              <MultiBinding Converter="{StaticResource AnyTrueToVisibilityConverter}" ConverterParameter="invert">
+                <Binding Path="IsRunning" />
+                <Binding Path="Report" Converter="{StaticResource NotNullToBoolConverter}" />
+                <Binding Path="Error" Converter="{StaticResource NotNullToBoolConverter}" />
+              </MultiBinding>
+            </TextBlock.Visibility>
+          </TextBlock>
         </StackPanel>
+        </Grid>
       </ScrollViewer>
 
       <StackPanel Style="{StaticResource EmptyStateStyle}"

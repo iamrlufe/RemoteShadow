@@ -61,6 +61,34 @@ public class JsonSettingsStoreTests
     }
 
     [Fact]
+    public async Task Briefly_locked_file_is_read_after_retry_instead_of_falling_back_to_defaults()
+    {
+        using var temp = new TempDir();
+        var favorite = Guid.NewGuid();
+        var writer = new JsonSettingsStore(temp.Paths);
+        var settings = writer.Load();
+        settings.FavoriteComputers.Add(favorite);
+        writer.Save(settings);
+
+        Task release;
+        using (var locked = new FileStream(temp.Paths.SettingsFile, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var stream = locked;
+            release = Task.Run(async () =>
+            {
+                await Task.Delay(40);
+                stream.Dispose(); // антивирус отпустил файл
+            });
+
+            var loaded = new JsonSettingsStore(temp.Paths).Load();
+
+            Assert.Equal(new[] { favorite }, loaded.FavoriteComputers);
+        }
+
+        await release;
+    }
+
+    [Fact]
     public void Save_then_load_in_new_instance_returns_same_values()
     {
         using var temp = new TempDir();

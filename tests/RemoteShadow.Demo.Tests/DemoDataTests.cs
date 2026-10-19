@@ -112,6 +112,18 @@ public class DemoDataTests
     }
 
     [Fact]
+    public void SetOnline_DoesNotBringDisabledComputerOnline()
+    {
+        var data = TestSupport.Data();
+        var pc = new DemoComputerDirectory(data, DemoTimings.Instant).SetEnabled(TestSupport.OnlineWorkstation(data).Id, false);
+
+        data.SetOnline(pc.Id, true); // так возвращается компьютер после «перезагрузки»
+
+        Assert.False(data.IsOnline(pc.Id));
+        Assert.Empty(data.GetSessions(pc.Id));
+    }
+
+    [Fact]
     public void CreateDefault_HasExpectedShape()
     {
         var data = DemoData.CreateDefault();

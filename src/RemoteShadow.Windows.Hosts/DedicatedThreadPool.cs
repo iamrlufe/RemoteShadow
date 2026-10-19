@@ -62,6 +62,15 @@ internal sealed class DedicatedThreadPool : IDisposable
         await _freeSlots.WaitAsync(ct).ConfigureAwait(false);
 
         var item = new WorkItem<T>(work, deadline);
+
+        // Если вызывающий перестал ждать (отмена), ошибку работы, которая закончится позже, никто не прочитает:
+        // забираем её сами, иначе она дойдёт до TaskScheduler.UnobservedTaskException и окна ошибки.
+        _ = item.Task.ContinueWith(
+            static t => _ = t.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
         _queue.Enqueue(item);
         _available.Release();
         if (_disposed) DrainQueue();

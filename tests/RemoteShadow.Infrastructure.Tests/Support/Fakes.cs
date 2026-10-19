@@ -471,9 +471,13 @@ public sealed class FakeReverseDnsResolver : IReverseDnsResolver
 {
     public Dictionary<string, string?> Names { get; } = new();
 
+    /// <summary>Адреса, для которых резолвер бросает исключение (не отмену).</summary>
+    public HashSet<string> Throwing { get; } = new();
+
     public Task<string?> ResolveAsync(string ipAddress, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
+        if (Throwing.Contains(ipAddress)) throw new InvalidOperationException("Фейковый сбой обратного DNS.");
         return Task.FromResult(Names.GetValueOrDefault(ipAddress));
     }
 }

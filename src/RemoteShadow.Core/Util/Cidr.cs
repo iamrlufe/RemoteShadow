@@ -133,7 +133,11 @@ public static class Cidr
             return false;
         }
 
-        if (!int.TryParse(prefixPart, out var prefixLength) || prefixLength is < 0 or > 32)
+        // Только цифры: int.TryParse по текущей культуре принял бы «+24», « 24» и «24 ».
+        if (prefixPart.Length is 0 or > 2
+            || !prefixPart.All(char.IsAsciiDigit)
+            || !int.TryParse(prefixPart, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var prefixLength)
+            || prefixLength is < 0 or > 32)
         {
             error = $"Префикс должен быть числом от 0 до 32, получено «{prefixPart}».";
             return false;

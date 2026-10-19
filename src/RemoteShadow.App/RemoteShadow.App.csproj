@@ -20,6 +20,9 @@
     <ProjectReference Include="..\RemoteShadow.Demo\RemoteShadow.Demo.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="RemoteShadow.App.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>

@@ -19,7 +19,7 @@ public sealed record DiagnosticItemRow(DiagnosticItem Item, ActionButtonModel? F
 /// Страница «Диагностика»: выбор компьютера, запуск <see cref="IDiagnosticsService.RunAsync"/> и кнопка «Исправить»
 /// для проверок с <see cref="DiagnosticItem.FixId"/> (действие <see cref="ApplyDiagnosticFixAction"/> модуля Diagnostics).
 /// </summary>
-public sealed partial class DiagnosticsPageViewModel : ObservableObject, INavigationAware, IDisposable
+public sealed partial class DiagnosticsPageViewModel : ObservableObject, INavigationAware, IRefreshablePage, IDisposable
 {
     private readonly IComputerIndex _index;
     private readonly IDiagnosticsService _diagnostics;
@@ -27,6 +27,7 @@ public sealed partial class DiagnosticsPageViewModel : ObservableObject, INaviga
     private readonly ActionPresenter<DiagnosticFixTarget> _presenter;
     private CancellationTokenSource? _runCts;
     private Guid? _trackedComputerId;
+    private bool _rebuildingList;
     private bool _disposed;
 
     public DiagnosticsPageViewModel(
@@ -148,16 +149,32 @@ public sealed partial class DiagnosticsPageViewModel : ObservableObject, INaviga
             return;
         }
 
-        SelectedComputer = computer;
+        // Поиск на странице мог скрыть компьютер — тогда список сбросил бы выбор.
+        if (Computers.All(c => c.Id != computer.Id)) SearchText = string.Empty;
+
+        SelectedComputer = Computers.FirstOrDefault(c => c.Id == computer.Id) ?? computer;
         _ = RunAsync();
+    }
+
+    /// <summary>F5 — проверить выбранный компьютер ещё раз.</summary>
+    public void RefreshPage(bool full)
+    {
+        if (RunCommand.CanExecute(null)) RunCommand.Execute(null);
     }
 
     partial void OnSearchTextChanged(string value) => RefreshComputers();
 
     partial void OnSelectedComputerChanged(ComputerInfo? value)
     {
+        // Список перестраивается (событие индекса, поиск): ListBox временно сбрасывает выбор — это не смена компьютера.
+        if (_rebuildingList) return;
+
         var id = value?.Id;
         if (id == _trackedComputerId) return; // та же запись (обновилось «в сети» и т. п.) — отчёт не сбрасываем.
+
+        // Проверка прежнего компьютера ещё идёт: её результат не должен появиться под именем нового.
+        _runCts?.Cancel();
+        IsRunning = false;
 
         _trackedComputerId = id;
         Report = null;
@@ -229,11 +246,22 @@ public sealed partial class DiagnosticsPageViewModel : ObservableObject, INaviga
         var text = SearchText.Trim();
         var source = text.Length == 0 ? _index.All : _index.Search(text, 200);
 
-        var selectedId = SelectedComputer?.Id;
-        Computers.Clear();
-        foreach (var computer in source.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)) Computers.Add(computer);
+        var selectedId = _trackedComputerId;
+        _rebuildingList = true;
+        try
+        {
+            Computers.Clear();
+            foreach (var computer in source.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)) Computers.Add(computer);
+        }
+        finally
+        {
+            _rebuildingList = false;
+        }
 
-        SelectedComputer = selectedId is { } id ? Computers.FirstOrDefault(c => c.Id == id) : null;
+        // Тот же компьютер после обновления индекса остаётся выбранным, и его отчёт не сбрасывается.
+        var reselected = selectedId is { } id ? Computers.FirstOrDefault(c => c.Id == id) : null;
+        if (!Equals(SelectedComputer, reselected)) SelectedComputer = reselected;
+        else if (reselected is null && _trackedComputerId is not null) OnSelectedComputerChanged(null);
     }
 
     public void Dispose()

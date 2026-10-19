@@ -25,6 +25,11 @@ public static class LdapFilter
     }
 
     /// <summary>Время для фильтра по whenChanged в формате generalized time: 20260115103000.0Z.</summary>
+    /// <remarks>
+    /// Время без указания вида (<see cref="DateTimeKind.Unspecified"/>, например прочитанное из файла без «Z») считается UTC,
+    /// как и задано контрактом: ToUniversalTime() приняло бы его за местное и сдвинуло на часовой пояс.
+    /// </remarks>
     public static string GeneralizedTime(DateTime utc) =>
-        utc.ToUniversalTime().ToString("yyyyMMddHHmmss'.0Z'", System.Globalization.CultureInfo.InvariantCulture);
+        (utc.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(utc, DateTimeKind.Utc) : utc.ToUniversalTime())
+            .ToString("yyyyMMddHHmmss'.0Z'", System.Globalization.CultureInfo.InvariantCulture);
 }

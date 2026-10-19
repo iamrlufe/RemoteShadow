@@ -28,6 +28,25 @@ public partial class App : Application
     public App()
     {
         new UnhandledExceptionHandler().Install(this);
+        EnableBindingTrace();
+    }
+
+    /// <summary>
+    /// Отладочная сборка: при <c>REMOTESHADOW_TRACE_BINDINGS=1</c> ошибки привязок WPF пишутся в
+    /// <c>%TEMP%\RemoteShadow-bindings.log</c> — их видно и без отладчика (например, при проверке скриншотами).
+    /// </summary>
+    [System.Diagnostics.Conditional("DEBUG")]
+    private static void EnableBindingTrace()
+    {
+        if (Environment.GetEnvironmentVariable("REMOTESHADOW_TRACE_BINDINGS") != "1") return;
+
+        var path = Path.Combine(Path.GetTempPath(), "RemoteShadow-bindings.log");
+        var listener = new System.Diagnostics.TextWriterTraceListener(new StreamWriter(path, append: false) { AutoFlush = true });
+        // Refresh перечитывает конфигурацию и сбрасывает слушателей, поэтому слушатель добавляется после него.
+        System.Diagnostics.PresentationTraceSources.Refresh();
+        var source = System.Diagnostics.PresentationTraceSources.DataBindingSource;
+        source.Listeners.Add(listener);
+        source.Switch.Level = System.Diagnostics.SourceLevels.Warning;
     }
 
     protected override async void OnStartup(StartupEventArgs e)
@@ -191,6 +210,7 @@ internal static class ShellServiceCollectionExtensions
         services.AddSingleton<INavigationService>(sp => sp.GetRequiredService<NavigationService>());
 
         services.AddSingleton<ThemeService>();
+        services.AddSingleton<WindowStateStore>();
         services.AddSingleton<ConnectionCoordinator>();
         services.AddTransient<LoginViewModel>();
 

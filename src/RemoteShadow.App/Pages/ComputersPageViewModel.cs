@@ -23,7 +23,7 @@ namespace RemoteShadow.App.Pages;
 /// не запускается сам по себе для всей сети).
 /// </para>
 /// </summary>
-public sealed partial class ComputersPageViewModel : ObservableObject, INavigationAware, IDisposable
+public sealed partial class ComputersPageViewModel : ObservableObject, INavigationAware, IRefreshablePage, IDisposable
 {
     private readonly IComputerIndex _index;
     private readonly ISessionService _sessions;
@@ -33,6 +33,8 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     private readonly ISubnetScanner _scanner;
     private readonly IDeviceMergeService _deviceMerge;
     private readonly IDialogService _dialogs;
+    private readonly IUserLocator? _locator;
+    private readonly INavigationService? _navigation;
     private readonly ActionPresenter<ComputerTarget> _computerPresenter;
     private readonly ActionPresenter<SessionTarget> _sessionPresenter;
 
@@ -44,6 +46,12 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     private CancellationTokenSource? _scanCts;
     private Guid? _trackedComputerId;
     private int? _pendingSessionId;
+
+    /// <summary>
+    /// Компьютер, открытый из поиска Ctrl+K, «Избранного» или «Найти пользователя»: он остаётся в списке, даже если
+    /// фильтры его скрывают (иначе список сбросил бы выбор и карточка не открылась бы).
+    /// </summary>
+    private Guid? _pinnedComputerId;
     private bool _disposed;
     private bool _loadingFilterFromSettings;
     private bool _rebuildingList;
@@ -57,7 +65,9 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         IComputerAvailabilityService availability,
         ISubnetScanner scanner,
         IDeviceMergeService deviceMerge,
-        IDialogService dialogs)
+        IDialogService dialogs,
+        IUserLocator? locator = null,
+        INavigationService? navigation = null)
     {
         _index = index;
         _sessions = sessions;
@@ -67,6 +77,8 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         _scanner = scanner;
         _deviceMerge = deviceMerge;
         _dialogs = dialogs;
+        _locator = locator;
+        _navigation = navigation;
         _computerPresenter = new ActionPresenter<ComputerTarget>(runner, notifications);
         _sessionPresenter = new ActionPresenter<SessionTarget>(runner, notifications);
 
@@ -231,9 +243,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
                 break;
 
             case FindUserRequest find:
-                // Опрос подразделений по IUserLocator.FindAsync ещё не подключён к интерфейсу: явно сообщаем,
-                // а не делаем вид, что поиск что-то нашёл.
-                _notifications.Info($"Поиск «{find.Text}» по подразделениям ещё не реализован. Используйте поиск Ctrl+K (ищет по уже опрошенным сессиям).");
+                FindUserTask = FindUserAsync(find.Text);
                 break;
         }
     }
@@ -269,6 +279,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         if (id == _trackedComputerId) return; // та же запись, просто обновились поля (например, «в сети»).
 
         _trackedComputerId = id;
+        if (_pinnedComputerId is { } pinnedId && pinnedId != id) _pinnedComputerId = null;
         if (value is not null) AddToRecent(value.Id);
         _ = LoadSessionsAsync(value);
     }
@@ -311,7 +322,6 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     /// <summary>Выбранная группа сужает список компьютеров: по этому признаку показывается плашка «Показать все».</summary>
     public bool HasSelectedGroup => SelectedGroup is not null;
 
-    /// <summary>«Показано N из M»: видно, что фильтры или группа сузили список.</summary>
     /// <summary>
     /// Подсказка, когда список пуст из-за фильтров по протоколам или доступности: они сравнивают только с результатами
     /// проверки, а после перезапуска проверок ещё нет (доступность не хранится).
@@ -319,9 +329,10 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     public string? EmptyListHint =>
         Computers.Count == 0 && (FilterRdp || FilterSmb || FilterSsh || AvailabilityFilter is AvailabilityFilter.Online or AvailabilityFilter.Offline)
         && _index.All.Any(c => c.LastCheckedUtc is null)
-            ? "Список пуст: фильтры по доступности и протоколам работают по результатам проверки, а часть компьютеров ещё не проверена. Нажмите «Обновить доступность»."
+            ? "Список пуст: фильтры по доступности и протоколам работают по результатам проверки, а часть компьютеров ещё не проверена. Нажмите «Обновить статусы» (F5)."
             : null;
 
+    /// <summary>«Показано N из M»: видно, что фильтры или группа сузили список.</summary>
     public string ListSummary => $"Показано {Computers.Count} из {_index.All.Count}";
 
     /// <summary>Снимает выбор группы и возвращает полный список компьютеров (без Ctrl+клика по списку групп).</summary>
@@ -338,7 +349,13 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         }
 
         _pendingSessionId = sessionId;
-        SelectedComputer = computer;
+        if (Computers.All(c => c.Id != computer.Id))
+        {
+            _pinnedComputerId = computer.Id;
+            RefreshComputers();
+        }
+
+        SelectedComputer = Computers.FirstOrDefault(c => c.Id == computer.Id) ?? computer;
 
         // Тот же компьютер уже был выбран: сессии не перезагружаются, поэтому выбираем сразу.
         if (sessionId is { } sid) SelectedSession = Sessions.FirstOrDefault(s => s.Id == sid);
@@ -498,7 +515,9 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
 
     private void RefreshComputers()
     {
-        var filtered = ComputersFilter.ApplyAndSort(BaseSource(), CurrentFilterState());
+        var filtered = ComputersFilter.ApplyAndSort(BaseSource(), CurrentFilterState()).ToList();
+        if (_pinnedComputerId is { } pinnedId && filtered.All(c => c.Id != pinnedId) && _index.Find(pinnedId) is { } pinned)
+            filtered.Insert(0, pinned);
 
         var selectedId = SelectedComputer?.Id;
 
@@ -636,9 +655,15 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     }
 
     [RelayCommand]
-    private void DeleteGroup(ComputerGroup? group)
+    private async Task DeleteGroupAsync(ComputerGroup? group)
     {
         if (group is null) return;
+
+        var confirmed = await _dialogs.ConfirmAsync(new ConfirmRequest(
+            "Удалить группу",
+            $"Удалить группу «{group.Name}»? Компьютеры останутся в AD и в списке — удаляется только сама группа.",
+            new[] { group.Name }));
+        if (!confirmed) return;
 
         var settings = _settingsStore.Load();
         settings.ComputerGroups.RemoveAll(g => g.Id == group.Id);
@@ -745,9 +770,15 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
     }
 
     [RelayCommand]
-    private void DeleteSubnet(SubnetDefinition? subnet)
+    private async Task DeleteSubnetAsync(SubnetDefinition? subnet)
     {
         if (subnet is null) return;
+
+        var confirmed = await _dialogs.ConfirmAsync(new ConfirmRequest(
+            "Удалить подсеть",
+            $"Удалить подсеть «{subnet.Name}» ({subnet.Cidr}) из списка сканирования?",
+            new[] { subnet.Cidr }));
+        if (!confirmed) return;
 
         var settings = _settingsStore.Load();
         settings.Subnets.RemoveAll(s => s.Id == subnet.Id);
@@ -777,7 +808,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         {
             var confirmed = await _dialogs.ConfirmAsync(new ConfirmRequest(
                 "Большая подсеть",
-                $"В подсети «{subnet.Name}» ({subnet.Cidr}) {range.UsableCount} адресов. Сканирование может занять продолжительное время и создать заметную сетевую нагрузку. Продолжить?",
+                $"В подсети «{subnet.Name}» ({subnet.Cidr}) {Plural.Format(range.UsableCount, "адрес", "адреса", "адресов")}. Сканирование может занять продолжительное время и создать заметную сетевую нагрузку. Продолжить?",
                 new[] { subnet.Cidr },
                 IsDangerous: true));
             if (!confirmed) return;
@@ -790,7 +821,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         ScanStatus = "Сканирование начато…";
         try
         {
-            var progress = new Progress<ScanProgress>(p => ScanStatus = $"Проверено {p.Completed} из {p.Total} адресов…");
+            var progress = new Progress<ScanProgress>(p => ScanStatus = $"Проверено {p.Completed} из {Plural.Format(p.Total, "адреса", "адресов", "адресов")}…");
 
             // Без UiThread.Post: продолжение после await в реальном приложении и так возвращается в поток интерфейса
             // (WPF SynchronizationContext), а в тестах без него выполняется тут же — обновление видно сразу в обоих случаях.
@@ -821,7 +852,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
                 if (index >= 0) DiscoveredDevices[index] = stale;
             }
 
-            ScanStatus = $"Готово: найдено {foundKeysThisScan.Count} устройств.";
+            ScanStatus = $"Готово: найдено {Plural.Format(foundKeysThisScan.Count, "устройство", "устройства", "устройств")}.";
         }
         catch (OperationCanceledException)
         {
@@ -895,7 +926,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
             var scope = AvailabilityScope();
             if (scope.Count > max)
             {
-                AutoCheckHint = $"Статусы сами не проверяются: в области {scope.Count} компьютеров (лимит {max}). Сузьте поиск, выберите группу или нажмите «Обновить статусы».";
+                AutoCheckHint = $"Статусы сами не проверяются: в области {Plural.Computers(scope.Count)} (лимит {max}). Сузьте поиск, выберите группу или нажмите «Обновить статусы».";
                 return;
             }
 
@@ -953,8 +984,8 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         {
             var confirmed = await _dialogs.ConfirmAsync(new ConfirmRequest(
                 "Проверить много компьютеров",
-                $"Будет проверено {scope.Count} компьютеров (DNS, ping, RDP/SMB/SSH). Это создаст заметную сетевую нагрузку. Сузьте область поиском, группой или подразделением либо продолжите.",
-                new[] { $"{scope.Count} компьютеров" },
+                $"Будет проверено {Plural.Computers(scope.Count)} (DNS, ping, RDP/SMB/SSH). Это создаст заметную сетевую нагрузку. Сузьте область поиском, группой или подразделением либо продолжите.",
+                new[] { Plural.Computers(scope.Count) },
                 IsDangerous: true));
             if (!confirmed) return;
         }
@@ -963,11 +994,16 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         _availabilityCts?.Cancel();
         var cts = new CancellationTokenSource();
         _availabilityCts = cts;
+        IsCheckingAvailability = true;
 
         try
         {
             await _availability.RefreshAsync(scope, force: true, cts.Token);
             RefreshComputers(); // не ждём throttled Changed от индекса — результат должен быть виден сразу
+
+            var ids = scope.Select(c => c.Id).ToHashSet();
+            var online = _index.All.Count(c => ids.Contains(c.Id) && c.IsOnline == true);
+            _notifications.Success($"Статусы обновлены: в сети {online} из {scope.Count}");
         }
         catch (OperationCanceledException)
         {
@@ -977,7 +1013,15 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         {
             _notifications.Error($"Не удалось проверить доступность: {ex.Message}");
         }
+        finally
+        {
+            if (ReferenceEquals(_availabilityCts, cts)) IsCheckingAvailability = false;
+        }
     }
+
+    /// <summary>Идёт ручная проверка статусов («Обновить статусы», F5): индикатор и кнопка «Отменить».</summary>
+    [ObservableProperty]
+    private bool _isCheckingAvailability;
 
     [RelayCommand]
     private void CancelAvailabilityRefresh() => _availabilityCts?.Cancel();
@@ -994,5 +1038,6 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
         _sessionsCts?.Cancel();
         _availabilityCts?.Cancel();
         _scanCts?.Cancel();
+        _findCts?.Cancel();
     }
 }

@@ -56,18 +56,6 @@ public sealed class ComputersPageViewModelTests
     }
 
     [Fact]
-    public void OnNavigatedTo_FindUserRequest_ReportsFeatureNotImplementedInsteadOfPretending()
-    {
-        var fixture = new DemoFixture();
-        var vm = CreateViewModel(fixture, fixture.Data.GetComputers());
-
-        vm.OnNavigatedTo(new FindUserRequest("петрова"));
-
-        Assert.Single(fixture.Notifications.InfoMessages);
-        Assert.Contains("не реализован", fixture.Notifications.InfoMessages[0]);
-    }
-
-    [Fact]
     public void OnNavigatedTo_SelectComputerRequest_UnknownId_ReportsError()
     {
         var fixture = new DemoFixture();

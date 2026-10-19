@@ -171,6 +171,9 @@ public sealed class DemoData
         {
             if (!_states.TryGetValue(id, out var state) || !_computers.TryGetValue(id, out var computer)) return;
 
+            // Отключённая учётная запись не «включается» сама (например, по таймеру возврата после перезагрузки).
+            if (online && !computer.Enabled) return;
+
             state.Online = online;
             state.Sessions = new List<SessionInfo>();
             if (online && !IsServer(computer)) state.Sessions.Add(CreateLoginScreenSession());

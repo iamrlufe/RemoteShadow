@@ -522,7 +522,8 @@
 
   <Style x:Key="BadgeInfoStyle" TargetType="Border" BasedOn="{StaticResource BadgeStyle}">
     <Setter Property="Background" Value="{DynamicResource SystemFillColorAttentionBackgroundBrush}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource SystemFillColorAttentionBrush}" />
+    <!-- SystemFillColorAttentionBrush в тёмной теме почти сливается с фоном бейджа: акцентный цвет для текста контрастнее. -->
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
   </Style>
 
 </ResourceDictionary>

@@ -233,8 +233,19 @@ public sealed class CimDiagnosticsService : IDiagnosticsService
     /// Блокирующий CIM-вызов на потоке пула .NET с общим дедлайном. Не уложились — <see cref="TimeoutException"/>,
     /// а вызов дорабатывает в фоне (у каждой CIM-операции свой таймаут) и сам закрывает сессию.
     /// </summary>
-    private Task<T> RunBlockingAsync<T>(Func<T> work, CancellationToken ct) =>
-        Task.Run(work, CancellationToken.None).WaitAsync(_cimDeadline, ct);
+    private Task<T> RunBlockingAsync<T>(Func<T> work, CancellationToken ct)
+    {
+        var task = Task.Run(work, CancellationToken.None);
+
+        // После таймаута или отмены ошибку дорабатывающего вызова никто не ждёт: забираем её, иначе она всплывёт
+        // как необработанная ошибка фоновой задачи (TaskScheduler.UnobservedTaskException).
+        _ = task.ContinueWith(
+            static t => _ = t.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        return task.WaitAsync(_cimDeadline, ct);
+    }
 
     /// <summary>Текст для непредвиденного сбоя: без стека и без точки в конце (её ставит вызывающий).</summary>
     private static string UnexpectedText(Exception ex) =>

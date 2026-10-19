@@ -51,3 +51,16 @@ public sealed record FindUserRequest(string Text);
 
 /// <summary>Открыть «Диагностика» для компьютера.</summary>
 public sealed record DiagnoseComputerRequest(Guid ComputerId);
+
+/// <summary>ViewModel страницы, которую обновляет F5 (и Ctrl+F5 — полное обновление) из главного окна.</summary>
+public interface IRefreshablePage
+{
+    /// <param name="full">Ctrl+F5: перечитать всё (например, список из AD), а не только состояние на экране.</param>
+    void RefreshPage(bool full);
+}
+
+/// <summary>Представление страницы с полем фильтра: Ctrl+F в главном окне ставит в него фокус.</summary>
+public interface IFilterablePage
+{
+    void FocusFilter();
+}

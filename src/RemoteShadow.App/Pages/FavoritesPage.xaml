@@ -3,13 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="clr-namespace:RemoteShadow.App.Pages"
              xmlns:actions="clr-namespace:RemoteShadow.App.Shell.Actions">
-  <UserControl.InputBindings>
-    <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
-  </UserControl.InputBindings>
   <UserControl.Resources>
     <!-- Строка компьютера: точка статуса, имя, «Открыть», быстрые действия, звезда. Один шаблон на оба списка. -->
     <DataTemplate x:Key="ComputerRowTemplate" DataType="{x:Type pages:FavoriteComputerItem}">
-      <Border Style="{StaticResource CardStyle}" Padding="12,10" Margin="0,0,0,8">
+      <!-- Двойной щелчок по карточке — открыть компьютер, правая кнопка — меню действий. -->
+      <Border Style="{StaticResource CardStyle}" Padding="12,10" Margin="0,0,0,8"
+              ContextMenuOpening="OnRowContextMenuOpening">
+        <Border.InputBindings>
+          <MouseBinding Gesture="LeftDoubleClick"
+                        Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}" />
+        </Border.InputBindings>
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
@@ -71,11 +75,16 @@
 
             <Button Style="{StaticResource FlatActionButtonStyle}"
                     Margin="0"
-                    Content="Убрать из избранного"
                     Command="{Binding DataContext.RemoveFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     CommandParameter="{Binding}"
                     Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVisibilityConverter}}"
-                    AutomationProperties.Name="Убрать из избранного" />
+                    AutomationProperties.Name="Убрать из избранного">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource IconTextStyle}" FontSize="14" Margin="0,0,6,0" Text="&#xE735;"
+                           Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+                <TextBlock Text="Убрать из избранного" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
             <Button Style="{StaticResource FlatActionButtonStyle}"
                     Margin="0"
                     Command="{Binding DataContext.AddFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -96,9 +105,19 @@
 
   <Grid>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="24" MaxWidth="980" HorizontalAlignment="Stretch">
+      <!-- Как на остальных страницах: содержимое прижато влево и не шире 980, а не плавает по центру широкого окна. -->
+      <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" MaxWidth="980" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+      <StackPanel>
         <Grid>
-          <TextBlock Text="Избранное" Style="{StaticResource PageTitleStyle}" />
+          <StackPanel>
+            <TextBlock Text="Избранное" Style="{StaticResource PageTitleStyle}" />
+            <TextBlock Text="Двойной щелчок по компьютеру — открыть его, правая кнопка — все действия."
+                       Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,0" />
+          </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
             <ProgressBar IsIndeterminate="True" Width="60" Height="3" Margin="0,0,10,0"
                          Visibility="{Binding IsChecking, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -149,6 +168,7 @@
                         IsTabStop="False" AutomationProperties.Name="Недавние компьютеры" />
         </StackPanel>
       </StackPanel>
+      </Grid>
     </ScrollViewer>
   </Grid>
 </UserControl>

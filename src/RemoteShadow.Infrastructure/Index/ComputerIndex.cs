@@ -36,6 +36,9 @@ public sealed class ComputerIndex : IComputerIndex, IDisposable
     /// <summary>Запас при частичном обновлении: часы контроллера домена и этого компьютера могут расходиться.</summary>
     internal static readonly TimeSpan PartialOverlap = TimeSpan.FromMinutes(5);
 
+    /// <summary>Наибольший период таймеров обновления: неделя.</summary>
+    private const int MaxTimerMinutes = 7 * 24 * 60;
+
     private readonly IComputerDirectory _directory;
     private readonly ISettingsStore _settings;
     private readonly ICurrentConnection _connection;
@@ -400,7 +403,7 @@ public sealed class ComputerIndex : IComputerIndex, IDisposable
             RaiseChanged();
         }
 
-        if (saveCache) await SaveCacheAsync().ConfigureAwait(false);
+        if (saveCache) await SaveCacheAsync(epoch).ConfigureAwait(false);
     }
 
     /// <summary>Нужна ли полная загрузка вместо частичной (см. описание класса).</summary>
@@ -532,8 +535,10 @@ public sealed class ComputerIndex : IComputerIndex, IDisposable
     {
         StopTimers();
 
-        var partial = TimeSpan.FromMinutes(Math.Max(1, settings.PartialRefreshMinutes));
-        var full = TimeSpan.FromMinutes(Math.Max(1, settings.FullRefreshMinutes));
+        // Период системного таймера не больше ~49 дней: огромное значение из руками правленного settings.json
+        // уронило бы InitializeAsync (ArgumentOutOfRangeException), поэтому ограничиваем неделей.
+        var partial = TimeSpan.FromMinutes(Math.Clamp(settings.PartialRefreshMinutes, 1, MaxTimerMinutes));
+        var full = TimeSpan.FromMinutes(Math.Clamp(settings.FullRefreshMinutes, 1, MaxTimerMinutes));
 
         _partialTimer = _time.CreateTimer(_ => OnTimer(false), null, partial, partial);
         _fullTimer = _time.CreateTimer(_ => OnTimer(true), null, full, full);
@@ -662,7 +667,7 @@ public sealed class ComputerIndex : IComputerIndex, IDisposable
         RaiseChanged();
     }
 
-    private async Task SaveCacheAsync()
+    private async Task SaveCacheAsync(int epoch)
     {
         try
         {
@@ -672,6 +677,10 @@ public sealed class ComputerIndex : IComputerIndex, IDisposable
             ComputerCacheFile file;
             lock (_writeLock)
             {
+                // После Clear() (выход, смена учётной записи) в индексе пусто или уже чужие данные: записать их значило бы
+                // затереть хороший кэш домена пустым списком.
+                if (epoch != _epoch) return;
+
                 file = new ComputerCacheFile
                 {
                     Version = ComputerCacheFile.CurrentVersion,

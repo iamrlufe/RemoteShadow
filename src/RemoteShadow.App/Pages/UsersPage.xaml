@@ -5,39 +5,66 @@
              xmlns:actions="clr-namespace:RemoteShadow.App.Shell.Actions">
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="360" />
+      <ColumnDefinition Width="2*" MinWidth="300" MaxWidth="440" />
       <ColumnDefinition Width="Auto" />
-      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="3*" />
     </Grid.ColumnDefinitions>
 
     <!-- ===== Поиск пользователей ===== -->
     <DockPanel Grid.Column="0" Margin="16,16,8,16">
       <TextBlock DockPanel.Dock="Top" Text="Пользователи AD" Style="{StaticResource PageTitleStyle}" Margin="0,0,0,12" />
-      <TextBox DockPanel.Dock="Top"
-               Margin="0,0,0,4"
-               Padding="8,6"
-               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-               AutomationProperties.Name="Поиск пользователя: ФИО, логин, отдел, телефон" />
+      <!-- Подсказка внутри поля, как на остальных страницах -->
+      <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+        <TextBox x:Name="FilterBox"
+                 Padding="8,6"
+                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                 PreviewKeyDown="OnFilterBoxKeyDown"
+                 AutomationProperties.Name="Поиск пользователя: ФИО, логин, отдел, телефон"
+                 AutomationProperties.AcceleratorKey="Ctrl+F" />
+        <TextBlock Text="ФИО, логин, отдел или телефон (Ctrl+F)"
+                   Margin="11,0,8,0"
+                   VerticalAlignment="Center"
+                   IsHitTestVisible="False"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
+      </Grid>
+      <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8"
+                  Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibilityConverter}}">
+        <ProgressBar IsIndeterminate="True" Height="3" AutomationProperties.Name="Идёт поиск" />
+        <TextBlock Text="Идёт поиск…" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,4,0,0" />
+      </StackPanel>
       <TextBlock DockPanel.Dock="Top"
-                 Style="{StaticResource CaptionMutedTextStyle}"
                  Margin="0,0,0,8"
-                 Text="ФИО, логин, отдел или телефон, от 2 символов" />
-      <TextBlock DockPanel.Dock="Top"
-                 Text="Идёт поиск…"
-                 Style="{StaticResource MutedTextStyle}"
-                 Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibilityConverter}}" />
-      <TextBlock DockPanel.Dock="Top"
+                 TextWrapping="Wrap"
                  Text="{Binding SearchError}"
                  Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                  Visibility="{Binding SearchError, Converter={StaticResource NullToVisibilityConverter}}" />
+      <TextBlock DockPanel.Dock="Top"
+                 Margin="0,0,0,8"
+                 Style="{StaticResource MutedTextStyle}"
+                 Text="Никто не найден. Проверьте написание или поищите по логину, отделу, телефону."
+                 Visibility="{Binding HasNoResults, Converter={StaticResource BoolToVisibilityConverter}}" />
+      <TextBlock DockPanel.Dock="Top"
+                 Margin="0,0,0,8"
+                 Style="{StaticResource CaptionMutedTextStyle}"
+                 Text="Введите не меньше 2 символов. Двойной щелчок по пользователю — найти, где он работает."
+                 Visibility="{Binding SearchText, Converter={StaticResource EmptyToVisibilityConverter}}" />
 
-      <ListBox ItemsSource="{Binding Results}"
+      <ListBox x:Name="UserList"
+               ItemsSource="{Binding Results}"
                SelectedItem="{Binding SelectedUser, Mode=TwoWay}"
+               PreviewKeyDown="OnUserListKeyDown"
+               MouseDoubleClick="OnUserListDoubleClick"
                BorderThickness="0"
                Background="Transparent"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-               ItemContainerStyle="{StaticResource ListItemStyle}"
                AutomationProperties.Name="Результаты поиска пользователей">
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="ListBoxItem" BasedOn="{StaticResource ListItemStyle}">
+            <Setter Property="AutomationProperties.Name" Value="{Binding ShownName}" />
+          </Style>
+        </ListBox.ItemContainerStyle>
         <ListBox.ItemTemplate>
           <DataTemplate DataType="{x:Type models:UserInfo}">
             <StackPanel>
@@ -65,13 +92,35 @@
     <Grid Grid.Column="2">
       <ScrollViewer Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}"
                     VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24" MaxWidth="760" HorizontalAlignment="Left">
-          <TextBlock Text="{Binding SelectedUser.ShownName}" Style="{StaticResource PageTitleStyle}" />
-          <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0">
-            <Run Text="{Binding SelectedUser.SamAccountName, Mode=OneWay}" />
-            <Run Text=" · " />
-            <Run Text="{Binding SelectedUser.Department, Mode=OneWay}" />
-          </TextBlock>
+        <Grid Margin="24">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MaxWidth="760" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+        <StackPanel>
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{Binding SelectedUser.ShownName}" Style="{StaticResource PageTitleStyle}" TextTrimming="CharacterEllipsis"
+                         ToolTip="{Binding SelectedUser.ShownName}" />
+              <Button Content="&#xE8C8;" Style="{StaticResource IconButtonStyle}" FontSize="14" Margin="8,2,0,0"
+                      Command="{Binding CopyLoginCommand}"
+                      ToolTip="Копировать логин (Ctrl+C в списке)" AutomationProperties.Name="Копировать логин" />
+            </StackPanel>
+            <Button Grid.Column="1" Style="{StaticResource PrimaryButtonStyle}" VerticalAlignment="Center" Margin="12,0,0,0"
+                    Command="{Binding FindWhereLoggedOnCommand}"
+                    ToolTip="Найти компьютеры, на которых пользователь сейчас работает (двойной щелчок по пользователю)"
+                    AutomationProperties.Name="Где работает пользователь">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource IconTextStyle}" FontSize="14" Margin="0,0,8,0" Text="&#xE721;" />
+                <TextBlock Text="Где работает?" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </Grid>
+          <TextBlock Text="{Binding SelectedUserSubtitle}" Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
 
           <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
             <Border Style="{StaticResource BadgeDangerStyle}" Margin="0,0,6,0"
@@ -96,14 +145,21 @@
           <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
             <StackPanel>
               <TextBlock Text="Группы" Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,8" />
-              <TextBlock Text="Загрузка…" Style="{StaticResource MutedTextStyle}"
+              <TextBlock Text="Загрузка групп…" Style="{StaticResource MutedTextStyle}"
                          Visibility="{Binding GroupsLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
-              <TextBlock Text="Пользователь не состоит ни в одной группе" Style="{StaticResource MutedTextStyle}"
-                         Visibility="{Binding Groups.Count, Converter={StaticResource EmptyToVisibilityConverter}}" />
+              <TextBlock Text="Пользователь не состоит ни в одной группе." Style="{StaticResource MutedTextStyle}">
+                <TextBlock.Visibility>
+                  <MultiBinding Converter="{StaticResource EmptyLoadedToVisibilityConverter}">
+                    <Binding Path="Groups.Count" />
+                    <Binding Path="GroupsLoading" />
+                  </MultiBinding>
+                </TextBlock.Visibility>
+              </TextBlock>
               <ItemsControl ItemsSource="{Binding Groups}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate DataType="{x:Type models:GroupInfo}">
-                    <Border Style="{StaticResource BadgeStyle}" Margin="0,0,6,6" HorizontalAlignment="Left">
+                    <Border Style="{StaticResource BadgeStyle}" Margin="0,0,6,6" HorizontalAlignment="Left"
+                            ToolTip="{Binding DistinguishedName}">
                       <TextBlock Text="{Binding Name}" />
                     </Border>
                   </DataTemplate>
@@ -117,6 +173,7 @@
             </StackPanel>
           </Border>
         </StackPanel>
+        </Grid>
       </ScrollViewer>
 
       <StackPanel Style="{StaticResource EmptyStateStyle}"

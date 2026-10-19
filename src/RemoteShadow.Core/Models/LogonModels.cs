@@ -39,7 +39,19 @@ public sealed record LogonRequest(
     string? Domain,
     string? DomainController,
     string? UserName,
-    string? Password);
+    string? Password)
+{
+    // Сгенерированный ToString записи выводит все свойства, в том числе пароль: он не должен попасть в журнал.
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append("Mode = ").Append(Mode)
+            .Append(", Domain = ").Append(Domain)
+            .Append(", DomainController = ").Append(DomainController)
+            .Append(", UserName = ").Append(UserName)
+            .Append(", Password = ").Append(Password is null ? "null" : "***");
+        return true;
+    }
+}
 
 public enum LogonError
 {
@@ -81,4 +93,15 @@ public sealed record StoredLogon(
     string Domain,
     string? DomainController,
     string UserName,
-    string? Password);
+    string? Password)
+{
+    // Сгенерированный ToString записи вывел бы сохранённый пароль.
+    private bool PrintMembers(System.Text.StringBuilder builder)
+    {
+        builder.Append("Domain = ").Append(Domain)
+            .Append(", DomainController = ").Append(DomainController)
+            .Append(", UserName = ").Append(UserName)
+            .Append(", Password = ").Append(Password is null ? "null" : "***");
+        return true;
+    }
+}
