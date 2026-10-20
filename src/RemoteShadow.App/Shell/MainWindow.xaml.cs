@@ -130,6 +130,36 @@ public partial class MainWindow : Window
         _viewModel.Dispose();
     }
 
+    // ===== Боковое меню: закрепить / свернуть до значков =====
+
+    private const double NavFullWidth = 232;
+    private const double NavCollapsedWidth = 56;
+    private bool _navPinned = true;
+
+    private void OnNavPinClick(object sender, RoutedEventArgs e)
+    {
+        _navPinned = !_navPinned;
+        ApplyNavState(hover: false);
+    }
+
+    private void OnNavMouseEnter(object sender, MouseEventArgs e)
+    {
+        if (!_navPinned) ApplyNavState(hover: true);
+    }
+
+    private void OnNavMouseLeave(object sender, MouseEventArgs e)
+    {
+        if (!_navPinned) ApplyNavState(hover: false);
+    }
+
+    private void ApplyNavState(bool hover)
+    {
+        NavColumn.Width = new GridLength(_navPinned ? NavFullWidth : NavCollapsedWidth);
+        NavPanel.Width = _navPinned || hover ? NavFullWidth : NavCollapsedWidth;
+        NavPinButton.Content = _navPinned ? "" : "";
+        NavPinButton.ToolTip = _navPinned ? "Свернуть меню" : "Закрепить меню";
+    }
+
     // ===== Поиск =====
 
     private void FocusSearch()

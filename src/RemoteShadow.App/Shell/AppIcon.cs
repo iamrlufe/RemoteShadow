@@ -14,7 +14,10 @@ internal static class AppIcon
     {
         try
         {
-            var frame = BitmapFrame.Create(new Uri("pack://application:,,,/Resources/app.ico", UriKind.Absolute));
+            // BitmapFrame.Create берёт первый кадр ico (16×16) — значок в шапке выглядел размытым. Берём самый крупный.
+            var decoder = BitmapDecoder.Create(new Uri("pack://application:,,,/Resources/app.ico", UriKind.Absolute),
+                BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+            var frame = decoder.Frames.OrderByDescending(f => f.PixelWidth).First();
             frame.Freeze();
             return frame;
         }
