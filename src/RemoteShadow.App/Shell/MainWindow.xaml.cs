@@ -113,6 +113,7 @@ public partial class MainWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ApplyNavState(hover: false);
         _viewModel.Initialize(_savedPlacement?.LastPageId);
     }
 
@@ -154,10 +155,16 @@ public partial class MainWindow : Window
 
     private void ApplyNavState(bool hover)
     {
+        var expanded = _navPinned || hover;
         NavColumn.Width = new GridLength(_navPinned ? NavFullWidth : NavCollapsedWidth);
-        NavPanel.Width = _navPinned || hover ? NavFullWidth : NavCollapsedWidth;
-        // Один и тот же значок кнопки в обоих состояниях: закреплённое меню — значок прямой, свёрнутое — наклонён.
-        NavPinButton.RenderTransform = _navPinned ? Transform.Identity : new RotateTransform(45);
+        NavPanel.Width = expanded ? NavFullWidth : NavCollapsedWidth;
+
+        // Свёрнутое меню: по центру столбца значков — «гамбургер»; раскрытое: справа булавка (акцентная, если закреплено).
+        NavPinButton.Content = expanded ? "" : "";
+        NavPinButton.HorizontalAlignment = expanded ? HorizontalAlignment.Right : HorizontalAlignment.Center;
+        NavPinButton.Margin = expanded ? new Thickness(0, 8, 10, 0) : new Thickness(0, 8, 0, 0);
+        NavPinButton.SetResourceReference(Control.ForegroundProperty,
+            _navPinned ? "AccentTextFillColorPrimaryBrush" : "TextFillColorPrimaryBrush");
         NavPinButton.ToolTip = _navPinned ? "Свернуть меню" : "Закрепить меню";
     }
 
