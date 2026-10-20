@@ -137,7 +137,21 @@ public partial class MainWindow : Window
     private const double NavCollapsedWidth = 56;
     private bool _navPinned = true;
 
-    private void OnNavPinClick(object sender, RoutedEventArgs e)
+    private void OnNavToggleClick(object sender, MouseButtonEventArgs e)
+    {
+        ToggleNavPinned();
+        e.Handled = true;
+    }
+
+    private void OnNavToggleKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Space)) return;
+
+        ToggleNavPinned();
+        e.Handled = true;
+    }
+
+    private void ToggleNavPinned()
     {
         _navPinned = !_navPinned;
         ApplyNavState(hover: false);
@@ -158,14 +172,8 @@ public partial class MainWindow : Window
         var expanded = _navPinned || hover;
         NavColumn.Width = new GridLength(_navPinned ? NavFullWidth : NavCollapsedWidth);
         NavPanel.Width = expanded ? NavFullWidth : NavCollapsedWidth;
-
-        // Свёрнутое меню: по центру столбца значков — «гамбургер»; раскрытое: справа булавка (акцентная, если закреплено).
-        NavPinGlyph.Text = expanded ? "" : "";
-        NavPinButton.HorizontalAlignment = expanded ? HorizontalAlignment.Right : HorizontalAlignment.Center;
-        NavPinButton.Margin = expanded ? new Thickness(0, 8, 10, 0) : new Thickness(0, 8, 0, 0);
-        NavPinGlyph.SetResourceReference(TextBlock.ForegroundProperty,
-            _navPinned ? "AccentTextFillColorPrimaryBrush" : "TextFillColorPrimaryBrush");
-        NavPinButton.ToolTip = _navPinned ? "Свернуть меню" : "Закрепить меню";
+        NavToggleLabel.Text = _navPinned ? "Свернуть меню" : "Закрепить меню";
+        NavToggle.ToolTip = NavToggleLabel.Text;
     }
 
     // ===== Поиск =====

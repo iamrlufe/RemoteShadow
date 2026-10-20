@@ -304,18 +304,41 @@
               MouseEnter="OnNavMouseEnter"
               MouseLeave="OnNavMouseLeave">
        <DockPanel>
-        <Button x:Name="NavPinButton"
+        <!-- Переключатель собран из тех же элементов, что и пункты меню (значок + подпись): рисуется там же, где значки меню -->
+        <Border x:Name="NavToggle"
                 DockPanel.Dock="Top"
-                HorizontalAlignment="Right"
-                Margin="0,8,10,0"
-                Width="36" MinWidth="36" Height="34"
-                Padding="0"
-                Style="{StaticResource FlatActionButtonStyle}"
-                Click="OnNavPinClick"
+                Margin="10,8,10,0"
+                Padding="8,7"
+                CornerRadius="6"
+                Cursor="Hand"
+                Focusable="True"
+                Background="Transparent"
                 ToolTip="Свернуть меню"
-                AutomationProperties.Name="Закрепить или свернуть меню">
-          <TextBlock x:Name="NavPinGlyph" Style="{StaticResource IconTextStyle}" Text="&#xE840;" />
-        </Button>
+                AutomationProperties.Name="Закрепить или свернуть меню"
+                MouseLeftButtonUp="OnNavToggleClick"
+                KeyDown="OnNavToggleKeyDown">
+          <Border.Style>
+            <Style TargetType="Border">
+              <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </Border.Style>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Style="{StaticResource IconTextStyle}"
+                       Width="22"
+                       Text="&#xE700;"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            <TextBlock x:Name="NavToggleLabel"
+                       Text="Свернуть меню"
+                       Margin="12,0,0,0"
+                       VerticalAlignment="Center"
+                       TextWrapping="NoWrap"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+          </StackPanel>
+        </Border>
         <ListBox x:Name="NavList"
                  Padding="10,4,10,12"
                  BorderThickness="0"
