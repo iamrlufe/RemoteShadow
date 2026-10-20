@@ -160,10 +160,10 @@ public partial class MainWindow : Window
         NavPanel.Width = expanded ? NavFullWidth : NavCollapsedWidth;
 
         // Свёрнутое меню: по центру столбца значков — «гамбургер»; раскрытое: справа булавка (акцентная, если закреплено).
-        NavPinButton.Content = expanded ? "" : "";
+        NavPinGlyph.Text = expanded ? "" : "";
         NavPinButton.HorizontalAlignment = expanded ? HorizontalAlignment.Right : HorizontalAlignment.Center;
         NavPinButton.Margin = expanded ? new Thickness(0, 8, 10, 0) : new Thickness(0, 8, 0, 0);
-        NavPinButton.SetResourceReference(Control.ForegroundProperty,
+        NavPinGlyph.SetResourceReference(TextBlock.ForegroundProperty,
             _navPinned ? "AccentTextFillColorPrimaryBrush" : "TextFillColorPrimaryBrush");
         NavPinButton.ToolTip = _navPinned ? "Свернуть меню" : "Закрепить меню";
     }

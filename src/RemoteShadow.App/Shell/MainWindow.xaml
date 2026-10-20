@@ -308,12 +308,14 @@
                 DockPanel.Dock="Top"
                 HorizontalAlignment="Right"
                 Margin="0,8,10,0"
-                Width="32" Height="28"
-                Style="{StaticResource IconButtonStyle}"
-                Content="&#xE840;"
+                Width="36" MinWidth="36" Height="34"
+                Padding="0"
+                Style="{StaticResource FlatActionButtonStyle}"
                 Click="OnNavPinClick"
                 ToolTip="Свернуть меню"
-                AutomationProperties.Name="Закрепить или свернуть меню" />
+                AutomationProperties.Name="Закрепить или свернуть меню">
+          <TextBlock x:Name="NavPinGlyph" Style="{StaticResource IconTextStyle}" Text="&#xE840;" />
+        </Button>
         <ListBox x:Name="NavList"
                  Padding="10,4,10,12"
                  BorderThickness="0"
