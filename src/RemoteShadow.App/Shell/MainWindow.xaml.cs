@@ -156,7 +156,8 @@ public partial class MainWindow : Window
     {
         NavColumn.Width = new GridLength(_navPinned ? NavFullWidth : NavCollapsedWidth);
         NavPanel.Width = _navPinned || hover ? NavFullWidth : NavCollapsedWidth;
-        NavPinButton.Content = _navPinned ? "" : "";
+        // Один и тот же значок кнопки в обоих состояниях: закреплённое меню — значок прямой, свёрнутое — наклонён.
+        NavPinButton.RenderTransform = _navPinned ? Transform.Identity : new RotateTransform(45);
         NavPinButton.ToolTip = _navPinned ? "Свернуть меню" : "Закрепить меню";
     }
 

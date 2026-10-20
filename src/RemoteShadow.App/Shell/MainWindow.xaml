@@ -311,6 +311,7 @@
                 Width="32" Height="28"
                 Style="{StaticResource IconButtonStyle}"
                 Content="&#xE840;"
+                RenderTransformOrigin="0.5,0.5"
                 Click="OnNavPinClick"
                 ToolTip="Свернуть меню"
                 AutomationProperties.Name="Закрепить или свернуть меню" />
