@@ -95,11 +95,57 @@ public sealed class UserLocator : IUserLocator
 
         var logins = await ResolveLoginsAsync(query, ct).ConfigureAwait(false);
 
-        var candidates = (scopeOuDn is null ? _index.All : _index.GetByOu(scopeOuDn, includeNestedOu))
+        var candidates = ScanCandidates(scopeOuDn is null ? _index.All : _index.GetByOu(scopeOuDn, includeNestedOu));
+        if (candidates.Count == 0) yield break;
+
+        await foreach (var location in ScanStreamAsync(candidates, query, logins, ct).ConfigureAwait(false))
+        {
+            yield return location;
+        }
+    }
+
+    public IReadOnlyList<UserLocation> ListCached()
+    {
+        var found = new List<UserLocation>();
+        foreach (var snapshot in _cache.GetAll())
+        {
+            var computer = _index.Find(snapshot.ComputerId);
+            if (computer is null) continue;
+
+            foreach (var session in snapshot.Result.Sessions)
+            {
+                if (session.HasUser) found.Add(new UserLocation(computer, session, snapshot.TakenAt, FromCache: true));
+            }
+        }
+
+        return found;
+    }
+
+    public async IAsyncEnumerable<UserLocation> ListAllAsync([EnumeratorCancellation] CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var candidates = ScanCandidates(_index.All);
+        if (candidates.Count == 0) yield break;
+
+        var noLogins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await foreach (var location in ScanStreamAsync(candidates, string.Empty, noLogins, ct).ConfigureAwait(false))
+        {
+            yield return location;
+        }
+    }
+
+    private static List<ComputerInfo> ScanCandidates(IEnumerable<ComputerInfo> computers) =>
+        computers
             .Where(c => c.Enabled && HostNameValidator.IsValid(c.HostName))
             .OrderByDescending(c => c.IsOnline == true) // известные «в сети» — первыми: находки придут раньше
             .ToList();
-        if (candidates.Count == 0) yield break;
+
+    private async IAsyncEnumerable<UserLocation> ScanStreamAsync(
+        List<ComputerInfo> candidates,
+        string query,
+        HashSet<string> logins,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
 
         var settings = _settings.Load();
         var timeout = TimeSpan.FromMilliseconds(Math.Clamp(settings.OnlineProbeTimeoutMs, 100, 5_000));
@@ -268,6 +314,7 @@ internal static class SessionMatcher
         IReadOnlyDictionary<string, string> fullNames)
     {
         if (!session.HasUser) return false;
+        if (text.Length == 0) return true; // пустой текст — «все пользователи» (вкладка «Пользователи»)
 
         var login = session.UserName!;
         if (logins is not null && logins.Contains(login)) return true;

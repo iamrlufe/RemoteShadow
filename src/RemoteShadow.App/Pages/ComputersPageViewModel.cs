@@ -413,6 +413,7 @@ public sealed partial class ComputersPageViewModel : ObservableObject, INavigati
                 {
                     SelectedSession = Sessions.FirstOrDefault(s => s.Id == sid);
                     _pendingSessionId = null;
+                    ConnectIfRequested(sid);
                 }
             }
             else

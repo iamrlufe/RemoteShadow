@@ -12,10 +12,10 @@
   </UserControl.Resources>
   <Grid>
     <Grid.ColumnDefinitions>
-      <!-- Список занимает 2/5 ширины (300–440): на узком окне карточке компьютера остаётся место. -->
-      <ColumnDefinition Width="2*" MinWidth="300" MaxWidth="440" />
+      <!-- Ширину списка меняют перетаскиванием разделителя; карточка занимает всё оставшееся место. -->
+      <ColumnDefinition Width="420" MinWidth="300" />
       <ColumnDefinition Width="Auto" />
-      <ColumnDefinition Width="3*" />
+      <ColumnDefinition Width="*" MinWidth="360" />
     </Grid.ColumnDefinitions>
 
     <!-- ===== Список компьютеров: дерево категорий, фильтры, поиск, таблица ===== -->
@@ -97,6 +97,9 @@
                      Checked="OnTabChecked" AutomationProperties.Name="Подсети и сканирование" />
         <RadioButton Style="{StaticResource TabChipStyle}" Content="Фильтры" Tag="filters" GroupName="ComputersTab"
                      Checked="OnTabChecked" AutomationProperties.Name="Фильтры и сортировка" />
+        <RadioButton x:Name="TabUsers" Style="{StaticResource TabChipStyle}" Content="Люди" Tag="users" GroupName="ComputersTab"
+                     Checked="OnTabChecked" AutomationProperties.Name="Пользователи и их сеансы"
+                     ToolTip="Кто за каким компьютером работает: подключение сразу к сеансу пользователя" />
         <RadioButton x:Name="TabFound" Style="{StaticResource TabChipStyle}" Content="Найдено" Tag="found" GroupName="ComputersTab"
                      Checked="OnTabChecked" AutomationProperties.Name="Найдено сканированием"
                      ToolTip="Устройства, найденные при сканировании подсетей" />
@@ -229,6 +232,50 @@
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
+
+        <!-- Люди: сеансы по логину, двойной щелчок — сразу подключение -->
+        <DockPanel x:Name="UsersPanel" Visibility="Collapsed" Margin="0,8,0,0">
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+            <TextBox MinHeight="34" Padding="8,6" Text="{Binding UsersFilter, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Логин, домен или имя компьютера" AutomationProperties.Name="Поиск пользователя" />
+            <TextBlock Text="Логин или компьютер" Margin="11,0,8,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                       Visibility="{Binding UsersFilter, Converter={StaticResource EmptyToVisibilityConverter}}" />
+          </Grid>
+          <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button Content="Опросить компьютеры" Command="{Binding ScanUsersCommand}" HorizontalAlignment="Stretch" Padding="6,6"
+                    ToolTip="Спросить у компьютеров в сети, кто на них работает" AutomationProperties.Name="Опросить компьютеры" />
+            <Button Grid.Column="1" Content="Остановить" Margin="8,0,0,0" Command="{Binding CancelUsersScanCommand}"
+                    Visibility="{Binding IsListingUsers, Converter={StaticResource BoolToVisibilityConverter}}"
+                    AutomationProperties.Name="Остановить опрос" />
+          </Grid>
+          <ProgressBar DockPanel.Dock="Top" IsIndeterminate="True" Height="3" Margin="0,0,0,4"
+                       Visibility="{Binding IsListingUsers, Converter={StaticResource BoolToVisibilityConverter}}" />
+          <TextBlock DockPanel.Dock="Top" Text="{Binding UsersStatus}" TextWrapping="Wrap" Style="{StaticResource CaptionMutedTextStyle}" Margin="0,0,0,4"
+                     Visibility="{Binding UsersStatus, Converter={StaticResource NullToVisibilityConverter}}" />
+          <ListBox x:Name="UserSessionList"
+                   ItemsSource="{Binding UserSessions}" SelectedItem="{Binding SelectedUserSession, Mode=TwoWay}"
+                   BorderThickness="0" Background="Transparent"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   VirtualizingStackPanel.IsVirtualizing="True"
+                   PreviewKeyDown="OnUserSessionListKeyDown"
+                   MouseDoubleClick="OnUserSessionListDoubleClick"
+                   ItemContainerStyle="{StaticResource ListItemStyle}"
+                   AutomationProperties.Name="Пользователи и их сеансы">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="{x:Type models:UserLocation}">
+                <StackPanel>
+                  <TextBlock Text="{Binding Session.AccountName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Style="{StaticResource CaptionMutedTextStyle}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"><Run Text="{Binding Computer.Name, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding Session.State, Mode=OneWay, Converter={StaticResource SessionStateTextConverter}}" /></TextBlock>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
 
         <ScrollViewer x:Name="GroupsScroll" VerticalAlignment="Stretch" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
           <StackPanel Margin="0,8,8,0">
@@ -461,16 +508,35 @@
 
     </DockPanel>
 
-    <Border Grid.Column="1" Style="{StaticResource VerticalDividerStyle}" />
+    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                  ResizeBehavior="PreviousAndNext" ResizeDirection="Columns" Cursor="SizeWE"
+                  Background="Transparent" ShowsPreview="False"
+                  ToolTip="Потяните, чтобы изменить ширину списка"
+                  AutomationProperties.Name="Разделитель списка и карточки">
+      <GridSplitter.Template>
+        <ControlTemplate TargetType="GridSplitter">
+          <Border Background="Transparent">
+            <Border x:Name="Line" Width="1" HorizontalAlignment="Center"
+                    Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Line" Property="Width" Value="3" />
+              <Setter TargetName="Line" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </GridSplitter.Template>
+    </GridSplitter>
 
     <!-- ===== Карточка компьютера ===== -->
     <Grid Grid.Column="2">
       <ScrollViewer Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibilityConverter}}"
                     VerticalScrollBarVisibility="Auto">
         <Grid Margin="24">
-          <!-- Карточки растягиваются до 760 и прижаты влево: одинаковая ширина при любом наборе кнопок. -->
+          <!-- Карточки растягиваются на всю ширину области справа от списка. -->
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" MaxWidth="760" />
+            <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
         <StackPanel>

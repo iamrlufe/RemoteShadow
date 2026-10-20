@@ -83,4 +83,13 @@ public interface IUserLocator
     /// (вызывать только по явной кнопке с предупреждением про EDR). Сначала проверяется порт 445.
     /// </summary>
     IAsyncEnumerable<UserLocation> FindAsync(string text, string? scopeOuDn, bool includeNestedOu, CancellationToken ct);
+
+    /// <summary>Все сессии с пользователем из кэша, без обращения в сеть (вкладка «Пользователи»).</summary>
+    IReadOnlyList<UserLocation> ListCached() => Array.Empty<UserLocation>();
+
+    /// <summary>
+    /// Опрашивает все компьютеры домена и отдаёт сессии всех пользователей по мере ответов; результат кладётся в кэш.
+    /// Вызывать только по явной кнопке с предупреждением про EDR.
+    /// </summary>
+    IAsyncEnumerable<UserLocation> ListAllAsync(CancellationToken ct) => AsyncEnumerable.Empty<UserLocation>();
 }

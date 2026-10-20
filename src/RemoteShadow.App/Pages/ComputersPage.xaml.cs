@@ -37,6 +37,8 @@ public partial class ComputersPage : UserControl, IFilterablePage
         if (sender is not RadioButton { Tag: string tag } || ComputerList is null) return;
 
         ComputerList.Visibility = tag == "list" ? Visibility.Visible : Visibility.Collapsed;
+        UsersPanel.Visibility = tag == "users" ? Visibility.Visible : Visibility.Collapsed;
+        if (tag == "users") ViewModel?.LoadUserSessionsFromCache();
         GroupsScroll.Visibility = tag == "groups" ? Visibility.Visible : Visibility.Collapsed;
         SubnetsScroll.Visibility = tag == "subnets" ? Visibility.Visible : Visibility.Collapsed;
         FiltersScroll.Visibility = tag == "filters" ? Visibility.Visible : Visibility.Collapsed;
@@ -61,7 +63,7 @@ public partial class ComputersPage : UserControl, IFilterablePage
     // Переход из поиска Ctrl+K или из «Избранного» выбирает компьютер: показываем список, где он выделен.
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ComputersPageViewModel.SelectedComputer) && ViewModel?.SelectedComputer is not null && TabList.IsChecked != true)
+        if (e.PropertyName == nameof(ComputersPageViewModel.SelectedComputer) && ViewModel?.SelectedComputer is not null && TabList.IsChecked != true && TabUsers.IsChecked != true)
             TabList.IsChecked = true;
     }
 
@@ -160,6 +162,24 @@ public partial class ComputersPage : UserControl, IFilterablePage
         if (e.ChangedButton != MouseButton.Left || !IsOnItem(e.OriginalSource)) return;
 
         ViewModel?.RunSessionMainActionCommand.Execute(null);
+        e.Handled = true;
+    }
+
+    // ----- пользователи -------------------------------------------------------------------------------------------
+
+    private void OnUserSessionListDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || !IsOnItem(e.OriginalSource)) return;
+
+        if (UserSessionList.SelectedItem is Core.Models.UserLocation location) ViewModel?.ConnectToUserSession(location);
+        e.Handled = true;
+    }
+
+    private void OnUserSessionListKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || UserSessionList.SelectedItem is not Core.Models.UserLocation location) return;
+
+        ViewModel?.ConnectToUserSession(location);
         e.Handled = true;
     }
 
